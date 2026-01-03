@@ -5,6 +5,8 @@ mod module;
 mod record;
 mod method;
 mod code;
+mod stackmap;
+mod verificationtypes;
 
 pub use names::{AttributeNames, NameableAttribute};
 
