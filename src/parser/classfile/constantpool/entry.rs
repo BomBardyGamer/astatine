@@ -4,32 +4,32 @@ use crate::types::methodhandle::MethodHandleRef;
 use crate::types::primitives::{Double, Float, Int, Long};
 
 pub enum Entry {
-    Utf8(EntryUtf8),
-    Integer(EntryInteger),
-    Float(EntryFloat),
-    Long(EntryLong),
-    Double(EntryDouble),
-    Class(EntryClass),
-    String(EntryString),
-    Fieldref(EntryFieldref),
-    Methodref(EntryMethodref),
-    InterfaceMethodref(EntryInterfaceMethodref),
-    NameAndType(EntryNameAndType),
-    MethodHandle(EntryMethodHandle),
-    MethodType(EntryMethodType),
-    Dynamic(EntryDynamic),
-    InvokeDynamic(EntryInvokeDynamic),
-    Module(EntryModule),
-    Package(EntryPackage),
+    Utf8(Utf8Info),
+    Integer(IntegerInfo),
+    Float(FloatInfo),
+    Long(LongInfo),
+    Double(DoubleInfo),
+    Class(ClassInfo),
+    String(StringInfo),
+    Fieldref(FieldrefInfo),
+    Methodref(MethodrefInfo),
+    InterfaceMethodref(InterfaceMethodrefInfo),
+    NameAndType(NameAndTypeInfo),
+    MethodHandle(MethodHandleInfo),
+    MethodType(MethodTypeInfo),
+    Dynamic(DynamicInfo),
+    InvokeDynamic(InvokeDynamicInfo),
+    Module(ModuleInfo),
+    Package(PackageInfo),
 }
 
-pub trait EntryTaggable {
+pub trait EntryInfo {
     fn tag() -> EntryTag;
 }
 
-macro_rules! impl_taggable {
+macro_rules! impl_info {
     ($name: ident, $tag: ident) => {
-        impl EntryTaggable for $name {
+        impl EntryInfo for $name {
             fn tag() -> EntryTag {
                 EntryTag::$tag
             }
@@ -37,13 +37,13 @@ macro_rules! impl_taggable {
     };
 }
 
-pub trait NameableEntry {
+pub trait InfoNameable {
     fn name_index(&self) -> PoolIndex;
 }
 
 macro_rules! impl_nameable {
     ($name: ident) => {
-        impl NameableEntry for $name {
+        impl InfoNameable for $name {
             fn name_index(&self) -> PoolIndex {
                 self.name_index
             }
@@ -56,14 +56,14 @@ macro_rules! simple_nameable {
         pub struct $name {
             name_index: PoolIndex,
         }
-        impl_taggable!($name, $tag);
+        impl_info!($name, $tag);
         impl_nameable!($name);
     };
 }
 
-simple_nameable!(EntryClass, Class);
+simple_nameable!(ClassInfo, Class);
 
-pub trait EntryRef {
+pub trait RefInfo {
     fn class_index(&self) -> PoolIndex;
     fn name_and_type_index(&self) -> PoolIndex;
 }
@@ -74,9 +74,9 @@ macro_rules! ref_entry {
             class_index: PoolIndex,
             name_and_type_index: PoolIndex,
         }
-        impl_taggable!($name, $tag);
+        impl_info!($name, $tag);
 
-        impl EntryRef for $name {
+        impl RefInfo for $name {
             fn class_index(&self) -> PoolIndex {
                 self.class_index
             }
@@ -88,28 +88,28 @@ macro_rules! ref_entry {
     };
 }
 
-ref_entry!(EntryFieldref, Fieldref);
-ref_entry!(EntryMethodref, Methodref);
-ref_entry!(EntryInterfaceMethodref, InterfaceMethodref);
+ref_entry!(FieldrefInfo, Fieldref);
+ref_entry!(MethodrefInfo, Methodref);
+ref_entry!(InterfaceMethodrefInfo, InterfaceMethodref);
 
-pub struct EntryString {
+pub struct StringInfo {
     string_index: PoolIndex,
 }
-impl_taggable!(EntryString, String);
+impl_info!(StringInfo, String);
 
-pub trait EntryNumber32 {
+pub trait Number32Info {
     fn int(&self) -> Int;
     fn float(&self) -> Float;
 }
 
-macro_rules! number32_entry {
+macro_rules! number32_info {
     ($name: ident, $tag: ident) => {
         pub struct $name {
             bytes: u32
         }
-        impl_taggable!($name, $tag);
+        impl_info!($name, $tag);
 
-        impl EntryNumber32 for $name {
+        impl Number32Info for $name {
             fn int(&self) -> Int {
                 self.bytes as Int
             }
@@ -121,22 +121,22 @@ macro_rules! number32_entry {
     };
 }
 
-number32_entry!(EntryInteger, Integer);
-number32_entry!(EntryFloat, Float);
+number32_info!(IntegerInfo, Integer);
+number32_info!(FloatInfo, Float);
 
-pub trait EntryNumber64 {
+pub trait Number64Info {
     fn long(&self) -> Long;
     fn double(&self) -> Double;
 }
 
-macro_rules! number64_entry {
+macro_rules! number64_info {
     ($name: ident, $tag: ident) => {
         pub struct $name {
             bytes: u64
         }
-        impl_taggable!($name, $tag);
+        impl_info!($name, $tag);
 
-        impl EntryNumber64 for $name {
+        impl Number64Info for $name {
             fn long(&self) -> Long {
                 self.bytes as Long
             }
@@ -148,38 +148,38 @@ macro_rules! number64_entry {
     };
 }
 
-number64_entry!(EntryLong, Long);
-number64_entry!(EntryDouble, Double);
+number64_info!(LongInfo, Long);
+number64_info!(DoubleInfo, Double);
 
-pub struct EntryNameAndType {
+pub struct NameAndTypeInfo {
     name_index: PoolIndex,
     descriptor_index: PoolIndex,
 }
-impl_taggable!(EntryNameAndType, NameAndType);
-impl_nameable!(EntryNameAndType);
+impl_info!(NameAndTypeInfo, NameAndType);
+impl_nameable!(NameAndTypeInfo);
 
-impl EntryNameAndType {
+impl NameAndTypeInfo {
     pub fn descriptor_index(&self) -> PoolIndex {
         self.descriptor_index
     }
 }
 
 // TODO: Figure out about how to do string stuff with this
-pub struct EntryUtf8 {
+pub struct Utf8Info {
     bytes: Vec<u8>
 }
-impl_taggable!(EntryUtf8, Utf8);
+impl_info!(Utf8Info, Utf8);
 
-pub struct EntryMethodHandle {
+pub struct MethodHandleInfo {
     reference_kind: MethodHandleRef,
     reference_index: PoolIndex
 }
-impl_taggable!(EntryMethodHandle, MethodHandle);
+impl_info!(MethodHandleInfo, MethodHandle);
 
-pub struct EntryMethodType {
+pub struct MethodTypeInfo {
     descriptor_index: PoolIndex,
 }
-impl_taggable!(EntryMethodType, MethodType);
+impl_info!(MethodTypeInfo, MethodType);
 
 macro_rules! dynamic {
     ($name: ident, $tag: ident) => {
@@ -187,7 +187,7 @@ macro_rules! dynamic {
             bootstrap_method_attr_index: PoolIndex,
             name_and_type_index: PoolIndex,
         }
-        impl_taggable!($name, $tag);
+        impl_info!($name, $tag);
 
         impl $name {
             pub fn bootstrap_method_attr_index(&self) -> PoolIndex {
@@ -201,8 +201,8 @@ macro_rules! dynamic {
     };
 }
 
-dynamic!(EntryDynamic, Dynamic);
-dynamic!(EntryInvokeDynamic, InvokeDynamic);
+dynamic!(DynamicInfo, Dynamic);
+dynamic!(InvokeDynamicInfo, InvokeDynamic);
 
-simple_nameable!(EntryModule, Module);
-simple_nameable!(EntryPackage, Package);
+simple_nameable!(ModuleInfo, Module);
+simple_nameable!(PackageInfo, Package);

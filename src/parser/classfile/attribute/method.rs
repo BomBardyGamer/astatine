@@ -1,7 +1,7 @@
 use crate::parser::classfile::attribute::names::{
     impl_attr_name, AttributeNames, NameableAttribute,
 };
-use crate::parser::classfile::constantpool::pool::PoolIndex;
+use crate::parser::classfile::constantpool::PoolIndex;
 
 pub struct Exceptions {
     exception_indexes: Vec<PoolIndex>,

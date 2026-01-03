@@ -1,4 +1,4 @@
-use crate::parser::classfile::constantpool::entry::Entry;
+use crate::parser::classfile::constantpool::Entry;
 
 pub struct Pool {
     constants: Vec<Entry>

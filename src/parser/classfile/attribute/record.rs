@@ -1,8 +1,8 @@
-use crate::parser::classfile::attribute::attribute::RecordAttribute;
+use crate::parser::classfile::attribute::RecordAttribute;
 use crate::parser::classfile::attribute::names::{
     impl_attr_name, AttributeNames, NameableAttribute,
 };
-use crate::parser::classfile::constantpool::pool::PoolIndex;
+use crate::parser::classfile::constantpool::PoolIndex;
 
 pub struct Record {
     components: Vec<RecordComponent>,
