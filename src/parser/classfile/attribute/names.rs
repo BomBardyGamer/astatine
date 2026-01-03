@@ -4,6 +4,21 @@ macro_rules! name_const {
     };
 }
 
+pub trait NameableAttribute {
+    fn name() -> &'static str;
+}
+
+macro_rules! impl_attr_name {
+    ($name: ident, $const: ident) => {
+        impl NameableAttribute for $name {
+            fn name() -> &'static str {
+                AttributeNames::$const
+            }
+        }
+    };
+}
+pub(crate) use impl_attr_name;
+
 pub enum AttributeNames {
 }
 
