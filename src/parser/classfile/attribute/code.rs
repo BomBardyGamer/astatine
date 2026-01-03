@@ -1,17 +1,13 @@
 use crate::parser::classfile::attribute::CodeAttribute;
-use crate::parser::classfile::attribute::names::{
-    impl_attr_name, AttributeNames, NameableAttribute,
-};
-use crate::parser::classfile::attribute::stackmap::StackMapFrame;
+use crate::parser::classfile::attribute::stackmap;
 
 pub struct Code {
     max_stack: u16,
     max_locals: u16,
     code: Vec<u8>,
-    exceptions: Vec<CodeException>,
+    exceptions: Vec<Exception>,
     attributes: Vec<CodeAttribute>,
 }
-impl_attr_name!(Code, CODE);
 
 impl Code {
     pub fn max_stack(&self) -> u16 {
@@ -26,7 +22,7 @@ impl Code {
         &self.code
     }
 
-    pub fn exceptions(&self) -> &[CodeException] {
+    pub fn exceptions(&self) -> &[Exception] {
         &self.exceptions
     }
 
@@ -35,14 +31,14 @@ impl Code {
     }
 }
 
-pub struct CodeException {
+pub struct Exception {
     start_pc: u16,
     end_pc: u16,
     handler_pc: u16,
     catch_type: u16,
 }
 
-impl CodeException {
+impl Exception {
     pub fn start_pc(&self) -> u16 {
         self.start_pc
     }
@@ -61,12 +57,19 @@ impl CodeException {
 }
 
 pub struct StackMapTable {
-    entries: Vec<StackMapFrame>,
+    entries: Vec<stackmap::Frame>,
 }
-impl_attr_name!(StackMapTable, STACK_MAP_TABLE);
 
 impl StackMapTable {
-    pub fn entries(&self) -> &[StackMapFrame] {
+    pub fn entries(&self) -> &[stackmap::Frame] {
         &self.entries
     }
+}
+
+mod _attr_name {
+    use super::*;
+    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+
+    impl_attr_name!(Code, CODE);
+    impl_attr_name!(StackMapTable, STACK_MAP_TABLE);
 }

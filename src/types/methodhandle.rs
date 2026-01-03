@@ -1,5 +1,5 @@
 #[repr(u8)]
-pub enum MethodHandleRef {
+pub enum Ref {
     GetField = 1,
     GetStatic = 2,
     PutField = 3,

@@ -4,32 +4,32 @@ macro_rules! name_const {
     };
 }
 
-pub trait NameableAttribute {
+pub trait Nameable {
     fn name() -> &'static str;
 }
 
+// TODO: Could we make this a derive procedural macro??
 macro_rules! impl_attr_name {
     ($name: ident, $const: ident) => {
-        impl NameableAttribute for $name {
+        impl Nameable for $name {
             fn name() -> &'static str {
-                AttributeNames::$const
+                Names::$const
             }
         }
     };
 }
 pub(crate) use impl_attr_name;
 
-pub enum AttributeNames {
-}
+pub enum Names {}
 
 // ClassFile | field_info | method_info | record_component_info | Code
-impl AttributeNames {
+impl Names {
     name_const!(RUNTIME_VISIBLE_TYPE_ANNOTATIONS, "RuntimeVisibleTypeAnnotations");
     name_const!(RUNTIME_INVISIBLE_TYPE_ANNOTATIONS, "RuntimeInvisibleTypeAnnotations");
 }
 
 // ClassFile | field_info | method_info | record_component_info
-impl AttributeNames {
+impl Names {
     // MAJOR 49 and above
     name_const!(SIGNATURE, "Signature");
     name_const!(RUNTIME_VISIBLE_ANNOTATIONS, "RuntimeVisibleAnnotations");
@@ -37,14 +37,14 @@ impl AttributeNames {
 }
 
 // ClassFile | field_info | method_info
-impl AttributeNames {
+impl Names {
     // MAJOR 45, MINOR 3 and above
     name_const!(SYNTHETIC, "Synthetic");
     name_const!(DEPRECATED, "Deprecated");
 }
 
 // ClassFile only
-impl AttributeNames {
+impl Names {
     // MAJOR 45, MINOR 3 and above
     name_const!(SOURCE_FILE, "SourceFile");
     name_const!(INNER_CLASSES, "InnerClasses");
@@ -74,13 +74,13 @@ impl AttributeNames {
 }
 
 // field_info only
-impl AttributeNames {
+impl Names {
     // MAJOR 45, MINOR 3 and above
     name_const!(CONSTANT_VALUE, "ConstantValue");
 }
 
 // method_info only
-impl AttributeNames {
+impl Names {
     // MAJOR 45, MINOR 3 and above
     name_const!(CODE, "Code");
     name_const!(EXCEPTIONS, "Exceptions");
@@ -95,7 +95,7 @@ impl AttributeNames {
 }
 
 // Code attribute only
-impl AttributeNames {
+impl Names {
     name_const!(STACK_MAP_TABLE, "StackMapTable");
 
     // Debugging attributes we don't use in the VM

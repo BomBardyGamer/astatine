@@ -1,15 +1,11 @@
-use crate::parser::classfile::attribute::names::{
-    impl_attr_name, AttributeNames, NameableAttribute,
-};
-use crate::parser::classfile::constantpool::PoolIndex;
+use crate::parser::classfile::constantpool;
 
 pub struct Exceptions {
-    exception_indexes: Vec<PoolIndex>,
+    exception_indexes: Vec<constantpool::Index>,
 }
-impl_attr_name!(Exceptions, EXCEPTIONS);
 
 impl Exceptions {
-    pub fn indexes(&self) -> &[PoolIndex] {
+    pub fn indexes(&self) -> &[constantpool::Index] {
         &self.exception_indexes
     }
 }
@@ -17,7 +13,6 @@ impl Exceptions {
 pub struct MethodParameters {
     parameters: Vec<MethodParameter>,
 }
-impl_attr_name!(MethodParameters, METHOD_PARAMETERS);
 
 impl MethodParameters {
     pub fn parameters(&self) -> &[MethodParameter] {
@@ -26,16 +21,24 @@ impl MethodParameters {
 }
 
 pub struct MethodParameter {
-    name_index: PoolIndex,
+    name_index: constantpool::Index,
     access_flags: u16,
 }
 
 impl MethodParameter {
-    pub fn name_index(&self) -> PoolIndex {
+    pub fn name_index(&self) -> constantpool::Index {
         self.name_index
     }
 
     pub fn access_flags(&self) -> u16 {
         self.access_flags
     }
+}
+
+mod _attr_name {
+    use super::*;
+    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+
+    impl_attr_name!(Exceptions, EXCEPTIONS);
+    impl_attr_name!(MethodParameters, METHOD_PARAMETERS);
 }

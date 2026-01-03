@@ -1,22 +1,18 @@
-use crate::parser::classfile::attribute::names::{
-    impl_attr_name, AttributeNames, NameableAttribute,
-};
-use crate::parser::classfile::constantpool::PoolIndex;
+use crate::parser::classfile::constantpool;
 
 pub struct Module {
-    name_index: PoolIndex,
+    name_index: constantpool::Index,
     flags: u16,
-    version_index: PoolIndex,
+    version_index: constantpool::Index,
     requires: Vec<ModuleRequires>,
     exports: Vec<ModuleExports>,
     opens: Vec<ModuleOpens>,
-    uses: Vec<PoolIndex>,
+    uses: Vec<constantpool::Index>,
     provides: Vec<ModuleProvides>,
 }
-impl_attr_name!(Module, MODULE);
 
 impl Module {
-    pub fn name_index(&self) -> PoolIndex {
+    pub fn name_index(&self) -> constantpool::Index {
         self.name_index
     }
 
@@ -24,7 +20,7 @@ impl Module {
         self.flags
     }
 
-    pub fn version_index(&self) -> PoolIndex {
+    pub fn version_index(&self) -> constantpool::Index {
         self.version_index
     }
 
@@ -40,7 +36,7 @@ impl Module {
         &self.opens
     }
 
-    pub fn uses(&self) -> &[PoolIndex] {
+    pub fn uses(&self) -> &[constantpool::Index] {
         &self.uses
     }
 
@@ -50,25 +46,32 @@ impl Module {
 }
 
 pub struct ModulePackages {
-    package_index: Vec<PoolIndex>,
+    package_index: Vec<constantpool::Index>,
 }
-impl_attr_name!(ModulePackages, MODULE_PACKAGES);
 
 impl ModulePackages {
-    pub fn package_index(&self) -> &[PoolIndex] {
+    pub fn package_index(&self) -> &[constantpool::Index] {
         &self.package_index
     }
 }
 
 pub struct ModuleMainClass {
-    main_class_index: PoolIndex,
+    main_class_index: constantpool::Index,
 }
-impl_attr_name!(ModuleMainClass, MODULE_MAIN_CLASS);
 
 impl ModuleMainClass {
-    pub fn main_class_index(&self) -> PoolIndex {
+    pub fn main_class_index(&self) -> constantpool::Index {
         self.main_class_index
     }
+}
+
+mod _attr_name {
+    use super::*;
+    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+
+    impl_attr_name!(Module, MODULE);
+    impl_attr_name!(ModulePackages, MODULE_PACKAGES);
+    impl_attr_name!(ModuleMainClass, MODULE_MAIN_CLASS);
 }
 
 #[repr(u16)]
@@ -90,13 +93,13 @@ pub enum ModuleFlag {
 macro_rules! module_part {
     ($name: ident, $attr_name: ident, $attr_ty: ty) => {
         pub struct $name {
-            index: PoolIndex,
+            index: constantpool::Index,
             flags: u16,
             $attr_name: $attr_ty,
         }
 
         impl $name {
-            pub fn index(&self) -> PoolIndex {
+            pub fn index(&self) -> constantpool::Index {
                 self.index
             }
 
@@ -107,29 +110,29 @@ macro_rules! module_part {
     };
 }
 
-module_part!(ModuleRequires, version_index, PoolIndex);
-module_part!(ModuleExports, to_index, Vec<PoolIndex>);
-module_part!(ModuleOpens, to_index, Vec<PoolIndex>);
+module_part!(ModuleRequires, version_index, constantpool::Index);
+module_part!(ModuleExports, to_index, Vec<constantpool::Index>);
+module_part!(ModuleOpens, to_index, Vec<constantpool::Index>);
 
 impl ModuleRequires {
-    pub fn version_index(&self) -> PoolIndex {
+    pub fn version_index(&self) -> constantpool::Index {
         self.version_index
     }
 }
 
 impl ModuleExports {
-    pub fn to_index(&self) -> &[PoolIndex] {
+    pub fn to_index(&self) -> &[constantpool::Index] {
         &self.to_index
     }
 }
 
 impl ModuleOpens {
-    pub fn to_index(&self) -> &[PoolIndex] {
+    pub fn to_index(&self) -> &[constantpool::Index] {
         &self.to_index
     }
 }
 
 pub struct ModuleProvides {
-    index: PoolIndex,
-    with_index: Vec<PoolIndex>,
+    index: constantpool::Index,
+    with_index: Vec<constantpool::Index>,
 }

@@ -1,15 +1,18 @@
-use crate::parser::classfile::attribute::names::{
-    impl_attr_name, AttributeNames, NameableAttribute,
-};
-use crate::parser::classfile::constantpool::PoolIndex;
+use crate::parser::classfile::constantpool;
 
 pub struct ConstantValue {
-    value_index: PoolIndex,
+    value_index: constantpool::Index,
 }
-impl_attr_name!(ConstantValue, CONSTANT_VALUE);
 
 impl ConstantValue {
-    pub fn value_index(&self) -> PoolIndex {
+    pub fn value_index(&self) -> constantpool::Index {
         self.value_index
     }
+}
+
+mod _attr_name {
+    use super::*;
+    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+
+    impl_attr_name!(ConstantValue, CONSTANT_VALUE);
 }

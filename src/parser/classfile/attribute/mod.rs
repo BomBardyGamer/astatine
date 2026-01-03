@@ -6,13 +6,12 @@ mod record;
 mod method;
 mod code;
 mod stackmap;
-mod verificationtypes;
-
-pub use names::{AttributeNames, NameableAttribute};
+mod annotations;
+mod type_annotations;
 
 use std::sync::OnceLock;
-use crate::parser::classfile::attribute::names::{impl_attr_name};
-use crate::parser::classfile::constantpool::PoolIndex;
+use crate::parser::classfile::attribute::names::{Names, Nameable};
+use crate::parser::classfile::constantpool;
 
 macro_rules! attr_names {
     ($($name: ident),+) => {
@@ -20,9 +19,10 @@ macro_rules! attr_names {
             static NAMES: OnceLock<Vec<&'static str>> = OnceLock::new();
             NAMES.get_or_init(|| {
                 let mut v = Vec::new();
-                v.push(AttributeNames::RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-                v.push(AttributeNames::RUNTIME_INVISIBLE_TYPE_ANNOTATIONS);
-                $(v.push(AttributeNames::$name);)+
+                // Common amongst all uses of attributes
+                v.push(Names::RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+                v.push(Names::RUNTIME_INVISIBLE_TYPE_ANNOTATIONS);
+                $(v.push(Names::$name);)+
                 v
             })
         }
@@ -111,18 +111,24 @@ impl CodeAttribute {
 }
 
 pub struct Signature {
-    signature_index: PoolIndex,
+    signature_index: constantpool::Index,
 }
-impl_attr_name!(Signature, SIGNATURE);
 
 impl Signature {
-    pub fn signature_index(&self) -> PoolIndex {
+    pub fn signature_index(&self) -> constantpool::Index {
         self.signature_index
     }
 }
 
 pub struct Synthetic {}
-impl_attr_name!(Synthetic, SYNTHETIC);
 
 pub struct Deprecated {}
-impl_attr_name!(Deprecated, DEPRECATED);
+
+mod _attr_name {
+    use super::*;
+    use crate::parser::classfile::attribute::names::impl_attr_name;
+
+    impl_attr_name!(Signature, SIGNATURE);
+    impl_attr_name!(Synthetic, SYNTHETIC);
+    impl_attr_name!(Deprecated, DEPRECATED);
+}

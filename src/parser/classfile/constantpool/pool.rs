@@ -4,16 +4,16 @@ pub struct Pool {
     constants: Vec<Entry>
 }
 
-pub type PoolIndex = u16;
-pub const POOL_INDEX_INVALID: PoolIndex = 0;
+pub type Index = u16;
+pub const INDEX_INVALID: Index = 0;
 
 impl Pool {
-    pub fn get(&self, index: PoolIndex) -> Option<&Entry> {
+    pub fn get(&self, index: Index) -> Option<&Entry> {
         // CP is indexed from 1 but backing array is indexed from 0
         self.constants.get((index - 1) as usize)
     }
 
-    fn put(&mut self, index: PoolIndex, entry: Entry) {
+    fn put(&mut self, index: Index, entry: Entry) {
         self.constants.insert((index - 1) as usize, entry);
     }
 
@@ -22,7 +22,7 @@ impl Pool {
         (self.constants.len() + 1) as u16
     }
 
-    pub fn is_valid_index(&self, index: PoolIndex) -> bool {
+    pub fn is_valid_index(&self, index: Index) -> bool {
         index >= 1 && index < self.size()
     }
 }
