@@ -23,10 +23,6 @@ pub enum AccessFlag {
     Enum = 0x4000 // Represents enum constant
 }
 
-fn field_err(err: ParserError) -> ParserError {
-    ParserError::new(format!("bad field: {err:?}"))
-}
-
 impl Parse<Field> for Field {
     fn parse(buf: &mut BinaryReader) -> Result<Field, ParserError> {
         // 2 access flags, 2 name index, 2 descriptor index
@@ -44,4 +40,8 @@ impl Parse<Field> for Field {
             attributes: vec![] // TODO: Attributes
         })
     }
+}
+
+fn field_err(err: ParserError) -> ParserError {
+    ParserError::new(format!("bad field: {err:?}"))
 }
