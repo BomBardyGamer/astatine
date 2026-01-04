@@ -42,6 +42,7 @@ impl Frame {
 }
 
 #[repr(u8)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum VerificationType {
     Top = 0,
     Integer = 1,

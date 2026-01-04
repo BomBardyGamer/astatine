@@ -75,6 +75,7 @@ mod _attr_name {
 }
 
 #[repr(u16)]
+#[derive(Primitive, Debug, PartialEq, Copy, Clone)]
 pub enum ModuleFlag {
     // Applies to the module attribute, requires, exports, and opens declarations
     Synthetic = 0x1000,

@@ -33,6 +33,7 @@ pub struct PathPart {
 }
 
 #[repr(u8)]
+#[derive(Primitive, Debug, PartialEq, Copy, Clone)]
 pub enum TargetType {
     Class = 0x00, // Only a ClassFile attribute
     Method = 0x01, // Only a Method attribute

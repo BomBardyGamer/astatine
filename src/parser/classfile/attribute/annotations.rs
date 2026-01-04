@@ -94,19 +94,19 @@ pub struct ArrayValue {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Primitive, Debug, PartialEq, Copy, Clone)]
 pub enum Tag {
-    Byte = 'B' as u8,
-    Char = 'C' as u8,
-    Double = 'D' as u8,
-    Float = 'F' as u8,
-    Int = 'I' as u8,
-    Long = 'J' as u8,
-    Short = 'S' as u8,
-    Boolean = 'Z' as u8,
-    String = 's' as u8,
-    Enum = 'e' as u8,
-    Class = 'c' as u8,
-    Annotation = '@' as u8,
-    Array = '[' as u8,
+    Byte = 66, // 'B'
+    Char = 67, // 'C'
+    Double = 68, // 'D'
+    Float = 70, // 'F'
+    Int = 73, // 'I'
+    Long = 74, // 'J'
+    Short = 83, // 'S'
+    Boolean = 90, // 'Z'
+    String = 115, // 's'
+    Enum = 101, // 'e'
+    Class = 99, // 'c'
+    Annotation = 64, // '@'
+    Array = 91, // '['
 }
