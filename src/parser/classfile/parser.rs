@@ -4,10 +4,14 @@ use crate::parser::reader::BinaryReader;
 use crate::types;
 use crate::types::ClassFileVersion;
 
-const CLASS_FILE_MAGIC_NUMBER: u32 = 0xCAFEBABE;
-
 impl Parse<ClassFile> for ClassFile {
     fn parse(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
+        Self::parse_impl(buf).map_err(classfile_err)
+    }
+}
+
+impl ClassFile {
+    fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
         read_and_check_magic(buf)?;
 
         let (minor_version, major_version): (u16, u16);
@@ -73,7 +77,13 @@ impl Parse<ClassFile> for ClassFile {
     }
 }
 
+fn classfile_err(err: ParserError) -> ParserError {
+    ParserError::new(format!("malformed class file: {err:?}"))
+}
+
 fn read_and_check_magic(buf: &mut BinaryReader) -> Result<(), ParserError> {
+    const CLASS_FILE_MAGIC_NUMBER: u32 = 0xCAFEBABE;
+
     buf.check_bytes(4, "classfile magic")?;
 
     // SAFETY: Guaranteed by check_bytes
@@ -84,11 +94,11 @@ fn read_and_check_magic(buf: &mut BinaryReader) -> Result<(), ParserError> {
     }
 }
 
-const MIN_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_1;
-const MAX_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_2;
-const SUPPORT_PREVIEW: bool = false; // TODO: Will we ever support preview features?
-
 fn check_major_minor(major: u16, minor: u16) -> Result<(), ParserError> {
+    const MIN_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_1;
+    const MAX_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_2;
+    const SUPPORT_PREVIEW: bool = false; // TODO: Will we ever support preview features?
+
     if major < MIN_SUPPORTED as u16 {
         let msg = format!("major version {major} not supported (min is {MIN_SUPPORTED})");
         return ParserError::new(msg).into();
