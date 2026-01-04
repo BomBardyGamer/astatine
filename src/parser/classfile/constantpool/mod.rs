@@ -1,6 +1,5 @@
 mod entry;
 mod pool;
-mod tag;
 
 // Export everything in submodules in this module so it appears as all one module
 pub use entry::{

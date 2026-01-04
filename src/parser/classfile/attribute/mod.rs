@@ -10,7 +10,7 @@ mod annotations;
 mod type_annotations;
 
 use std::sync::OnceLock;
-use crate::parser::classfile::attribute::names::{Names, Nameable};
+use self::names::{Names, Nameable};
 use crate::parser::classfile::constantpool;
 
 macro_rules! attr_names {

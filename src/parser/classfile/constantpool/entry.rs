@@ -1,4 +1,3 @@
-use crate::parser::classfile::constantpool::pool::Index;
 use crate::types::methodhandle;
 use crate::types::primitives;
 
@@ -37,13 +36,13 @@ macro_rules! impl_info {
 }
 
 pub trait InfoNameable {
-    fn name_index(&self) -> Index;
+    fn name_index(&self) -> super::Index;
 }
 
 macro_rules! impl_nameable {
     ($name: ident) => {
         impl InfoNameable for $name {
-            fn name_index(&self) -> Index {
+            fn name_index(&self) -> super::Index {
                 self.name_index
             }
         }
@@ -53,7 +52,7 @@ macro_rules! impl_nameable {
 macro_rules! simple_nameable {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            name_index: Index,
+            name_index: super::Index,
         }
         impl_info!($name, $tag);
         impl_nameable!($name);
@@ -63,24 +62,24 @@ macro_rules! simple_nameable {
 simple_nameable!(ClassInfo, Class);
 
 pub trait RefInfo {
-    fn class_index(&self) -> Index;
-    fn name_and_type_index(&self) -> Index;
+    fn class_index(&self) -> super::Index;
+    fn name_and_type_index(&self) -> super::Index;
 }
 
 macro_rules! ref_entry {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            class_index: Index,
-            name_and_type_index: Index,
+            class_index: super::Index,
+            name_and_type_index: super::Index,
         }
         impl_info!($name, $tag);
 
         impl RefInfo for $name {
-            fn class_index(&self) -> Index {
+            fn class_index(&self) -> super::Index {
                 self.class_index
             }
 
-            fn name_and_type_index(&self) -> Index {
+            fn name_and_type_index(&self) -> super::Index {
                 self.name_and_type_index
             }
         }
@@ -92,7 +91,7 @@ ref_entry!(MethodrefInfo, Methodref);
 ref_entry!(InterfaceMethodrefInfo, InterfaceMethodref);
 
 pub struct StringInfo {
-    string_index: Index,
+    string_index: super::Index,
 }
 impl_info!(StringInfo, String);
 
@@ -151,14 +150,14 @@ number64_info!(LongInfo, Long);
 number64_info!(DoubleInfo, Double);
 
 pub struct NameAndTypeInfo {
-    name_index: Index,
-    descriptor_index: Index,
+    name_index: super::Index,
+    descriptor_index: super::Index,
 }
 impl_info!(NameAndTypeInfo, NameAndType);
 impl_nameable!(NameAndTypeInfo);
 
 impl NameAndTypeInfo {
-    pub fn descriptor_index(&self) -> Index {
+    pub fn descriptor_index(&self) -> super::Index {
         self.descriptor_index
     }
 }
@@ -171,29 +170,29 @@ impl_info!(Utf8Info, Utf8);
 
 pub struct MethodHandleInfo {
     reference_kind: methodhandle::Ref,
-    reference_index: Index
+    reference_index: super::Index
 }
 impl_info!(MethodHandleInfo, MethodHandle);
 
 pub struct MethodTypeInfo {
-    descriptor_index: Index,
+    descriptor_index: super::Index,
 }
 impl_info!(MethodTypeInfo, MethodType);
 
 macro_rules! dynamic {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            bootstrap_method_attr_index: Index,
-            name_and_type_index: Index,
+            bootstrap_method_attr_index: super::Index,
+            name_and_type_index: super::Index,
         }
         impl_info!($name, $tag);
 
         impl $name {
-            pub fn bootstrap_method_attr_index(&self) -> Index {
+            pub fn bootstrap_method_attr_index(&self) -> super::Index {
                 self.bootstrap_method_attr_index
             }
 
-            pub fn name_and_type_index(&self) -> Index {
+            pub fn name_and_type_index(&self) -> super::Index {
                 self.name_and_type_index
             }
         }

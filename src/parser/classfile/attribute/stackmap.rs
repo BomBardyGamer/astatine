@@ -1,4 +1,4 @@
-use crate::parser::classfile::constantpool::Index;
+use crate::parser::classfile::constantpool;
 
 pub enum Frame {
     Same { frame_type: u8 },
@@ -50,6 +50,6 @@ pub enum VerificationType {
     Long = 4,
     Null = 5,
     UninitializedThis = 6,
-    Object { pool_index: Index } = 7,
+    Object { pool_index: constantpool::Index } = 7,
     Uninitialized { offset: u16 } = 8
 }
