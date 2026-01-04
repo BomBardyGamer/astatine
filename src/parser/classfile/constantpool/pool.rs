@@ -1,7 +1,7 @@
 use crate::parser::classfile::constantpool::Entry;
 
 pub struct Pool {
-    constants: Vec<Entry>
+    pub(super) constants: Vec<Entry>
 }
 
 pub type Index = u16;
@@ -13,7 +13,7 @@ impl Pool {
         self.constants.get((index - 1) as usize)
     }
 
-    fn put(&mut self, index: Index, entry: Entry) {
+    pub(super) fn put(&mut self, index: Index, entry: Entry) {
         self.constants.insert((index - 1) as usize, entry);
     }
 

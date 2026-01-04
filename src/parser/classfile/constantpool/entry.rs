@@ -19,6 +19,10 @@ pub enum Entry {
     InvokeDynamic(InvokeDynamicInfo),
     Module(ModuleInfo),
     Package(PackageInfo),
+    // Used for the 2nd part of Long and Double which take up 2 spaces
+    // This is a bit of a hack to avoid some other solution of having the actual entry resolvable
+    // from both index and index + 1
+    Unusable
 }
 
 pub trait Info {
@@ -52,7 +56,7 @@ macro_rules! impl_nameable {
 macro_rules! simple_nameable {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            name_index: super::Index,
+            pub(super) name_index: super::Index,
         }
         impl_info!($name, $tag);
         impl_nameable!($name);
@@ -69,8 +73,8 @@ pub trait RefInfo {
 macro_rules! ref_entry {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            class_index: super::Index,
-            name_and_type_index: super::Index,
+            pub(super) class_index: super::Index,
+            pub(super) name_and_type_index: super::Index,
         }
         impl_info!($name, $tag);
 
@@ -91,7 +95,7 @@ ref_entry!(MethodrefInfo, Methodref);
 ref_entry!(InterfaceMethodrefInfo, InterfaceMethodref);
 
 pub struct StringInfo {
-    string_index: super::Index,
+    pub(super) string_index: super::Index,
 }
 impl_info!(StringInfo, String);
 
@@ -103,7 +107,7 @@ pub trait Number32Info {
 macro_rules! number32_info {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            bytes: u32
+            pub(super) bytes: u32
         }
         impl_info!($name, $tag);
 
@@ -130,7 +134,7 @@ pub trait Number64Info {
 macro_rules! number64_info {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            bytes: u64
+            pub(super) bytes: u64
         }
         impl_info!($name, $tag);
 
@@ -150,8 +154,8 @@ number64_info!(LongInfo, Long);
 number64_info!(DoubleInfo, Double);
 
 pub struct NameAndTypeInfo {
-    name_index: super::Index,
-    descriptor_index: super::Index,
+    pub(super) name_index: super::Index,
+    pub(super) descriptor_index: super::Index,
 }
 impl_info!(NameAndTypeInfo, NameAndType);
 impl_nameable!(NameAndTypeInfo);
@@ -164,26 +168,26 @@ impl NameAndTypeInfo {
 
 // TODO: Figure out about how to do string stuff with this
 pub struct Utf8Info {
-    bytes: Vec<u8>
+    pub(super) bytes: Vec<u8>
 }
 impl_info!(Utf8Info, Utf8);
 
 pub struct MethodHandleInfo {
-    reference_kind: methodhandle::Ref,
-    reference_index: super::Index
+    pub(super) reference_kind: methodhandle::Ref,
+    pub(super) reference_index: super::Index
 }
 impl_info!(MethodHandleInfo, MethodHandle);
 
 pub struct MethodTypeInfo {
-    descriptor_index: super::Index,
+    pub(super) descriptor_index: super::Index,
 }
 impl_info!(MethodTypeInfo, MethodType);
 
 macro_rules! dynamic {
     ($name: ident, $tag: ident) => {
         pub struct $name {
-            bootstrap_method_attr_index: super::Index,
-            name_and_type_index: super::Index,
+            pub(super) bootstrap_method_attr_index: super::Index,
+            pub(super) name_and_type_index: super::Index,
         }
         impl_info!($name, $tag);
 
