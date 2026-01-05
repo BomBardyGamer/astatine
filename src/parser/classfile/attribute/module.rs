@@ -153,11 +153,15 @@ mod _parse {
             let flags = unsafe { buf.unsafe_read_u16() };
             let version_index = unsafe { buf.unsafe_read_u16() };
 
-            buf_read_named_type_vec!(ModuleRequires, requires, buf, "module - requires");
-            buf_read_named_type_vec!(ModuleExports, exports, buf, "module - exports");
-            buf_read_named_type_vec!(ModuleOpens, opens, buf, "module - opens");
+            buf_read_named_type_vec!(ModuleRequires, requires, buf,
+                "module - requires", "module - requires - idx {}");
+            buf_read_named_type_vec!(ModuleExports, exports, buf,
+                "module - exports", "module - exports - idx {}");
+            buf_read_named_type_vec!(ModuleOpens, opens, buf,
+                "module - opens", "module - opens - idx {}");
             buf_read_u16_vec!(uses, buf, "module - uses");
-            buf_read_named_type_vec!(ModuleProvides, provides, buf, "module - provides");
+            buf_read_named_type_vec!(ModuleProvides, provides, buf,
+                "module - provides", "module - provides - idx {}");
 
             Ok(Module {
                 name_index,
@@ -195,7 +199,6 @@ mod _parse {
                     // SAFETY: Guaranteed by check_bytes
                     let index = unsafe { buf.unsafe_read_u16() };
                     let flags = unsafe { buf.unsafe_read_u16() };
-
                     buf_read_u16_vec!(to_index, buf, "module exports");
 
                     Ok($name { index, flags, to_index })

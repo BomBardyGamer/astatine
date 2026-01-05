@@ -44,37 +44,21 @@ mod _attr_name {
 }
 
 mod _parse {
+    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
     use crate::parser::{BinaryReader, Parse, ParserError};
     use super::*;
 
     impl Parse<Exceptions> for Exceptions {
         fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParserError> {
-            buf.check_bytes(2, "exceptions")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let len = unsafe { buf.unsafe_read_u16() };
-            buf.check_bytes((len * 2) as usize, "exceptions")?;
-
-            let mut exception_indexes = Vec::with_capacity(len as usize);
-            // SAFETY: Guaranteed by check_bytes
-            unsafe { buf.unsafe_read_u16_slice(&mut exception_indexes) }
-
+            buf_read_u16_vec!(exception_indexes, buf, "exceptions");
             Ok(Exceptions { exception_indexes })
         }
     }
 
     impl Parse<MethodParameters> for MethodParameters {
         fn parse(buf: &mut BinaryReader) -> Result<MethodParameters, ParserError> {
-            buf.check_bytes(2, "method parameters")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let count = unsafe { buf.unsafe_read_u16() };
-
-            let mut parameters = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                parameters.push(MethodParameter::parse(buf)?);
-            }
-
+            buf_read_named_type_vec!(MethodParameter, parameters, buf,
+                "method parameters", "method parameters - idx {}");
             Ok(MethodParameters { parameters })
         }
     }

@@ -93,6 +93,8 @@ impl BinaryReader {
     pub unsafe fn unsafe_read_u16_slice(&mut self, out: &mut [u16]) {
         let byte_len = out.len() * 2;
 
+        // TODO: It's probably possible to do it faster than this, but
+        //  as it stands at the moment, it's not worth it.
         let mut j = 0;
         for i in (0..byte_len).step_by(2) {
             let (a, b): (u16, u16);
@@ -134,15 +136,38 @@ impl BinaryReader {
     }
 }
 
+/// Allows arbitrary reader function for len to allow different u-sized lengths
+/// This is useful in code array as the size of the code array is a u32 but the array is Vec<u8>
+#[macro_export]
+macro_rules! buf_read_u8_vec_lensize {
+    ($var_name: ident, $buf: expr, $read_len: ident, $error: expr) => {
+        $buf.check_bytes(2, $error)?;
+
+        let mut $var_name: Vec<u8>;
+        {
+            // SAFETY: Guaranteed by check_bytes at top
+            let len = unsafe { $buf.$read_len() };
+            $buf.check_bytes(len as usize, $error)?;
+
+            $var_name = Vec::with_capacity(len as usize);
+            $buf.read(&mut $var_name);
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! buf_read_u16_vec {
-    ($var_name: ident, $buf: expr, $error_msg: expr) => {
+    ($var_name: ident, $buf: expr, $error: expr) => {
+        $buf.check_bytes(2, $error)?;
+
         let mut $var_name;
         {
-            let size = unsafe { $buf.unsafe_read_u16() };
-            $buf.check_bytes((size * 2) as usize, $error_msg)?;
+            // SAFETY: Guaranteed by check_bytes at top
+            let len = unsafe { $buf.unsafe_read_u16() } as usize;
+            $buf.check_bytes(len * 2, $error)?;
 
-            $var_name = Vec::with_capacity(size as usize);
+            $var_name = Vec::with_capacity(len as usize);
+            // SAFETY: Guaranteed by check_bytes on len
             unsafe { $buf.unsafe_read_u16_slice(&mut $var_name) };
         }
     };
@@ -150,16 +175,17 @@ macro_rules! buf_read_u16_vec {
 
 #[macro_export]
 macro_rules! buf_read_named_type_vec {
-    ($typ: ident, $var_name: ident, $buf: expr, $error_msg: expr) => {
-        $buf.check_bytes(2, $error_msg)?;
+    ($typ: ident, $var_name: ident, $buf: expr, $error: expr, $error_idx: expr) => {
+        $buf.check_bytes(2, $error)?;
 
         let mut $var_name: Vec<$typ>;
         {
+            // SAFETY: Guaranteed by check_bytes at top
             let len = unsafe { $buf.unsafe_read_u16() };
             $var_name = Vec::with_capacity(len as usize);
 
-            for _ in 0..len {
-                $var_name.push($typ::parse($buf).map_err(ParserError::wrap($error_msg))?);
+            for i in 0..len {
+                $var_name.push($typ::parse($buf).map_err(ParserError::wrap(format!($error_idx, i)))?);
             }
         }
     };

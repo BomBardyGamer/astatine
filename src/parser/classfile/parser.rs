@@ -1,7 +1,7 @@
 use super::{constantpool, ClassFile};
 use crate::parser::{Parse, ParserError};
 use crate::parser::reader::BinaryReader;
-use crate::types;
+use crate::{buf_read_u16_vec, types};
 use crate::types::ClassFileVersion;
 
 impl Parse<ClassFile> for ClassFile {
@@ -31,35 +31,16 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
 
     // SAFETY: Next 3 reads guaranteed by above check_bytes
     let access_flags = unsafe { buf.unsafe_read_u16() };
-    let this_class: constantpool::Index;
-    {
-        this_class = unsafe { buf.unsafe_read_u16() };
-        if !pool.is_valid_index(this_class) {
-            return ParserError::new("this class not in constant pool").into();
-        }
+    let this_class = unsafe { buf.unsafe_read_u16() };
+    if !pool.is_valid_index(this_class) {
+        return ParserError::new("this class not in constant pool").into();
     }
-    let super_class: constantpool::Index;
-    {
-        super_class = unsafe { buf.unsafe_read_u16() };
-        if super_class != 0 && !pool.is_valid_index(super_class) {
-            return ParserError::new("super class not in constant pool").into();
-        }
+    let super_class = unsafe { buf.unsafe_read_u16() };
+    if super_class != 0 && !pool.is_valid_index(super_class) {
+        return ParserError::new("super class not in constant pool").into();
     }
 
-    let mut interfaces: Vec<constantpool::Index>;
-    {
-        buf.check_bytes(2, "interfaces length")?;
-
-        // SAFETY: Guaranteed by check_bytes
-        let len = unsafe { buf.unsafe_read_u16() } as usize;
-        buf.check_bytes(len * 2, "interfaces")?;
-
-        interfaces = Vec::with_capacity(len);
-        // SAFETY: Guaranteed by check_bytes on length
-        unsafe {
-            buf.unsafe_read_u16_slice(&mut interfaces)
-        }
-    }
+    buf_read_u16_vec!(interfaces, buf, "interfaces");
 
     Ok(ClassFile {
         minor_version,

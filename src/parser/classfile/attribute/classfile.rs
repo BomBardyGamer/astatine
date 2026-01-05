@@ -24,27 +24,27 @@ impl InnerClasses {
 }
 
 pub struct InnerClass {
-    inner_class_index: constantpool::Index,
-    outer_class_index: constantpool::Index,
-    inner_name_index: constantpool::Index,
-    inner_class_access_flags: u16,
+    index: constantpool::Index,
+    outer_index: constantpool::Index,
+    name_index: constantpool::Index,
+    access_flags: u16,
 }
 
 impl InnerClass {
     pub fn inner_class_index(&self) -> constantpool::Index {
-        self.inner_class_index
+        self.index
     }
 
     pub fn outer_class_index(&self) -> constantpool::Index {
-        self.outer_class_index
+        self.outer_index
     }
 
     pub fn inner_name_index(&self) -> constantpool::Index {
-        self.inner_name_index
+        self.name_index
     }
 
     pub fn inner_class_access_flags(&self) -> u16 {
-        self.inner_class_access_flags
+        self.access_flags
     }
 }
 
@@ -132,6 +132,7 @@ mod _attr_name {
 }
 
 mod _parse {
+    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
     use super::*;
     use crate::parser::{Parse, ParserError, BinaryReader};
 
@@ -147,38 +148,24 @@ mod _parse {
 
     impl Parse<InnerClasses> for InnerClasses {
         fn parse(buf: &mut BinaryReader) -> Result<InnerClasses, ParserError> {
-            buf.check_bytes(2, "inner classes")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let count = unsafe { buf.unsafe_read_u16() };
-
-            let mut inner_classes = Vec::with_capacity(count as usize);
-            for i in 0..count {
-                let class = InnerClass::parse(buf)
-                    .map_err(ParserError::wrap(format!("inner classes - class[{i}]")))?;
-                inner_classes[i as usize] = class;
-            }
-
+            buf_read_named_type_vec!(InnerClass, inner_classes, buf,
+                "inner classes", "inner classes - idx {}");
             Ok(InnerClasses { inner_classes })
         }
     }
 
     impl Parse<InnerClass> for InnerClass {
         fn parse(buf: &mut BinaryReader) -> Result<InnerClass, ParserError> {
+            // 2 index, 2 outer index, 2 name index, 2 access flags
             buf.check_bytes(2 + 2 + 2 + 2, "inner class")?;
 
             // SAFETY: Guaranteed by check_bytes
-            let inner_class_index = unsafe { buf.unsafe_read_u16() };
-            let outer_class_index = unsafe { buf.unsafe_read_u16() };
-            let inner_name_index = unsafe { buf.unsafe_read_u16() };
-            let inner_class_access_flags = unsafe { buf.unsafe_read_u16() };
+            let index = unsafe { buf.unsafe_read_u16() };
+            let outer_index = unsafe { buf.unsafe_read_u16() };
+            let name_index = unsafe { buf.unsafe_read_u16() };
+            let access_flags = unsafe { buf.unsafe_read_u16() };
 
-            Ok(InnerClass {
-                inner_class_index,
-                outer_class_index,
-                inner_name_index,
-                inner_class_access_flags,
-            })
+            Ok(InnerClass { index, outer_index, name_index, access_flags })
         }
     }
 
@@ -195,35 +182,19 @@ mod _parse {
 
     impl Parse<BootstrapMethods> for BootstrapMethods {
         fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethods, ParserError> {
-            buf.check_bytes(2, "bootstrap methods")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let method_count = unsafe { buf.unsafe_read_u16() };
-            let mut methods = Vec::with_capacity(method_count as usize);
-
-            for i in 0..method_count {
-                let method = BootstrapMethod::parse(buf)
-                    .map_err(ParserError::wrap(format!("bootstrap methods - method[{i}]")))?;
-                methods[i as usize] = method;
-            }
-
+            buf_read_named_type_vec!(BootstrapMethod, methods, buf,
+                "bootstrap methods", "bootstrap methods - idx {}");
             Ok(BootstrapMethods { methods })
         }
     }
 
     impl Parse<BootstrapMethod> for BootstrapMethod {
         fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethod, ParserError> {
-            buf.check_bytes(2 + 2, "bootstrap method")?;
+            buf.check_bytes(2, "method ref")?;
 
             // SAFETY: Guaranteed by check_bytes
             let method_ref = unsafe { buf.unsafe_read_u16() };
-            let arg_count = unsafe { buf.unsafe_read_u16() };
-
-            buf.check_bytes((arg_count * 2) as usize, "bootstrap arguments")?;
-            let mut bootstrap_arguments = Vec::with_capacity(arg_count as usize);
-
-            // SAFETY: Guaranteed by check_bytes
-            unsafe { buf.unsafe_read_u16_slice(&mut bootstrap_arguments) }
+            buf_read_u16_vec!(bootstrap_arguments, buf, "bootstrap arguments");
 
             Ok(BootstrapMethod { method_ref, bootstrap_arguments })
         }
@@ -241,32 +212,14 @@ mod _parse {
 
     impl Parse<NestMembers> for NestMembers {
         fn parse(buf: &mut BinaryReader) -> Result<NestMembers, ParserError> {
-            buf.check_bytes(2, "nest members")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let num_classes = unsafe { buf.unsafe_read_u16() };
-            buf.check_bytes((num_classes * 2) as usize, "nest members")?;
-
-            let mut classes = Vec::with_capacity(num_classes as usize);
-            // SAFETY: Guaranteed by check_bytes
-            unsafe { buf.unsafe_read_u16_slice(&mut classes) };
-
+            buf_read_u16_vec!(classes, buf, "nest members");
             Ok(NestMembers { classes })
         }
     }
 
     impl Parse<PermittedSubclasses> for PermittedSubclasses {
         fn parse(buf: &mut BinaryReader) -> Result<PermittedSubclasses, ParserError> {
-            buf.check_bytes(2, "permitted subclasses")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let num_classes = unsafe { buf.unsafe_read_u16() };
-            buf.check_bytes((num_classes * 2) as usize, "permitted subclasses")?;
-
-            let mut classes = Vec::with_capacity(num_classes as usize);
-            // SAFETY: Guaranteed by check_bytes
-            unsafe { buf.unsafe_read_u16_slice(&mut classes) };
-
+            buf_read_u16_vec!(classes, buf, "permitted subclasses");
             Ok(PermittedSubclasses { classes })
         }
     }

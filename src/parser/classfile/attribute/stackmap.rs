@@ -65,6 +65,7 @@ pub enum VerificationType {
 }
 
 mod _parse {
+    use crate::buf_read_named_type_vec;
     use super::*;
     use crate::parser::{BinaryReader, Parse, ParserError};
 
@@ -96,22 +97,22 @@ mod _parse {
 
     fn parse_same_locals_one_stack_item(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
         let stack = VerificationType::parse(buf)
-            .map_err(ParserError::wrap("same locals one stack item"))?;
+            .map_err(ParserError::wrap("same locals one stack item - stack"))?;
         Ok(Frame::SameLocalsOneStackItem { frame_type, stack })
     }
 
     fn parse_same_locals_one_stack_item_extended(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
-        buf.check_bytes(2, "same locals one stack item extended")?;
+        buf.check_bytes(2, "same locals one stack item extended - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
         let stack = VerificationType::parse(buf)
-            .map_err(ParserError::wrap("same locals one stack item extended"))?;
+            .map_err(ParserError::wrap("same locals one stack item extended - stack"))?;
         Ok(Frame::SameLocalsOneStackItemExtended { offset_delta, stack })
     }
 
     fn parse_chop(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
-        buf.check_bytes(2, "chop")?;
+        buf.check_bytes(2, "chop - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
@@ -119,7 +120,7 @@ mod _parse {
     }
 
     fn parse_same_frame_extended(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
-        buf.check_bytes(2, "same frame extended")?;
+        buf.check_bytes(2, "same frame extended - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
@@ -127,41 +128,33 @@ mod _parse {
     }
 
     fn parse_append(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
-        buf.check_bytes(2, "append")?;
+        buf.check_bytes(2, "append - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
 
+        // Cannot use macro as num_locals is not using a length defined in type
         let num_locals = frame_type - 251;
         let mut locals = Vec::with_capacity(num_locals as usize);
 
-        for _ in 0..num_locals {
-            locals.push(VerificationType::parse(buf)?);
+        for i in 0..num_locals {
+            let local = VerificationType::parse(buf)
+                .map_err(ParserError::wrap(format!("append - locals - idx {i}")))?;
+            locals.push(local);
         }
         Ok(Frame::Append { frame_type, offset_delta, locals })
     }
 
     fn parse_full(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
-        // 2 offset delta, 2 number of locals
-        buf.check_bytes(2 + 2, "full")?;
+        buf.check_bytes(2, "full")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
-        let num_locals = unsafe { buf.unsafe_read_u16() };
 
-        let mut locals = Vec::with_capacity(num_locals as usize);
-        for _ in 0..num_locals {
-            locals.push(VerificationType::parse(buf)?);
-        }
-
-        buf.check_bytes(2, "full")?;
-        // SAFETY: Guaranteed by check_bytes
-        let stack_size = unsafe { buf.unsafe_read_u16() };
-
-        let mut stack = Vec::with_capacity(stack_size as usize);
-        for _ in 0..stack_size {
-            stack.push(VerificationType::parse(buf)?);
-        }
+        buf_read_named_type_vec!(VerificationType, locals, buf,
+            "full - locals", "full - locals - idx {}");
+        buf_read_named_type_vec!(VerificationType, stack, buf,
+            "full - stack", "full - stack - idx {}");
 
         Ok(Frame::Full { offset_delta, locals, stack })
     }

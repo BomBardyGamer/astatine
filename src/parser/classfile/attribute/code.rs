@@ -75,24 +75,23 @@ mod _attr_name {
 }
 
 mod _parse {
+    use crate::{buf_read_named_type_vec, buf_read_u8_vec_lensize};
     use super::*;
+    use super::stackmap::Frame;
     use crate::parser::{Parse, ParserError, BinaryReader};
 
     impl Parse<Code> for Code {
         fn parse(buf: &mut BinaryReader) -> Result<Code, ParserError> {
             // 2 max stack, 2 max locals, 4 code length
-            buf.check_bytes(2 + 2 + 4, "code - max stack, max locals, code length")?;
+            buf.check_bytes(2 + 2, "code - max stack, max locals, code length")?;
 
             // Safety: Guaranteed by check_bytes
             let max_stack = unsafe { buf.unsafe_read_u16() };
             let max_locals = unsafe { buf.unsafe_read_u16() };
-            let code_len = unsafe { buf.unsafe_read_u16() };
 
-            buf.check_bytes(code_len as usize, "code - code array")?;
-            let mut code = Vec::with_capacity(code_len as usize);
-            buf.read(&mut code);
-
-            let exceptions = parse_exceptions(buf)?;
+            buf_read_u8_vec_lensize!(code, buf, unsafe_read_u32, "code - code array");
+            buf_read_named_type_vec!(Exception, exceptions, buf,
+                "code - exceptions", "code - exceptions - idx {}");
 
             Ok(Code {
                 max_stack,
@@ -102,18 +101,6 @@ mod _parse {
                 attributes: vec![] // TODO: Attributes
             })
         }
-    }
-
-    fn parse_exceptions(buf: &mut BinaryReader) -> Result<Vec<Exception>, ParserError> {
-        buf.check_bytes(2, "code - exceptions")?;
-
-        let len = unsafe { buf.unsafe_read_u16() };
-        let mut exceptions = Vec::with_capacity(len as usize);
-
-        for _ in 0..len {
-            exceptions.push(Exception::parse(buf)?);
-        }
-        Ok(exceptions)
     }
 
     impl Parse<Exception> for Exception {
@@ -132,16 +119,8 @@ mod _parse {
 
     impl Parse<StackMapTable> for StackMapTable {
         fn parse(buf: &mut BinaryReader) -> Result<StackMapTable, ParserError> {
-            buf.check_bytes(2, "code - stack map table")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let len = unsafe { buf.unsafe_read_u16() };
-            let mut entries = Vec::with_capacity(len as usize);
-
-            for _ in 0..len {
-                entries.push(stackmap::Frame::parse(buf)?);
-            }
-
+            buf_read_named_type_vec!(Frame, entries, buf,
+                "code - stack map table", "code - stack map table - idx {}");
             Ok(StackMapTable { entries })
         }
     }
