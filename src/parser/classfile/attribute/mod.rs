@@ -9,6 +9,9 @@ mod stackmap;
 mod annotations;
 mod type_annotations;
 
+pub use _attr_name::*;
+pub use _parse::*;
+
 use std::sync::OnceLock;
 use self::names::{Names, Nameable};
 use crate::parser::classfile::constantpool;
@@ -131,4 +134,31 @@ mod _attr_name {
     impl_attr_name!(Signature, SIGNATURE);
     impl_attr_name!(Synthetic, SYNTHETIC);
     impl_attr_name!(Deprecated, DEPRECATED);
+}
+
+mod _parse {
+    use super::*;
+    use crate::parser::{BinaryReader, Parse, ParserError};
+
+    impl Parse<Signature> for Signature {
+        fn parse(buf: &mut BinaryReader) -> Result<Signature, ParserError> {
+            buf.check_bytes(2, "signature")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let signature_index = unsafe { buf.unsafe_read_u16() };
+            Ok(Signature { signature_index })
+        }
+    }
+
+    impl Parse<Synthetic> for Synthetic {
+        fn parse(_: &mut BinaryReader) -> Result<Synthetic, ParserError> {
+            Ok(Synthetic {})
+        }
+    }
+
+    impl Parse<Deprecated> for Deprecated {
+        fn parse(_: &mut BinaryReader) -> Result<Deprecated, ParserError> {
+            Ok(Deprecated {})
+        }
+    }
 }

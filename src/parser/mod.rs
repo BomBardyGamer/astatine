@@ -1,9 +1,10 @@
-use std::error::Error;
-use std::fmt::{Debug, Display, Formatter};
-use crate::parser::reader::BinaryReader;
-
 mod classfile;
 mod reader;
+
+pub use reader::BinaryReader;
+
+use std::error::Error;
+use std::fmt::{Debug, Display, Formatter};
 
 pub trait Parse<T> {
     fn parse(buf: &mut BinaryReader) -> Result<T, ParserError>;
@@ -16,6 +17,11 @@ pub struct ParserError {
 impl ParserError {
     pub fn new(msg: impl Into<String>) -> ParserError {
         Self { msg: msg.into() }
+    }
+
+    pub fn wrap(wrapping_msg: impl Into<String>) -> impl Fn(ParserError) -> ParserError {
+        let msg = wrapping_msg.into();
+        move |err| ParserError::new(format!("{msg}: {err:?}"))
     }
 
     pub fn not_enough_bytes<T>(msg: impl Into<String>) -> Result<T, ParserError> {
