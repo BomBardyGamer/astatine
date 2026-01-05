@@ -16,3 +16,18 @@ mod _attr_name {
 
     impl_attr_name!(ConstantValue, CONSTANT_VALUE);
 }
+
+mod _parse {
+    use crate::parser::{BinaryReader, Parse, ParserError};
+    use super::*;
+
+    impl Parse<ConstantValue> for ConstantValue {
+        fn parse(buf: &mut BinaryReader) -> Result<ConstantValue, ParserError> {
+            buf.check_bytes(2, "constant value")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let value_index = unsafe { buf.unsafe_read_u16() };
+            Ok(ConstantValue { value_index })
+        }
+    }
+}

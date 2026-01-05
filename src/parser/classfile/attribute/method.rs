@@ -42,3 +42,52 @@ mod _attr_name {
     impl_attr_name!(Exceptions, EXCEPTIONS);
     impl_attr_name!(MethodParameters, METHOD_PARAMETERS);
 }
+
+mod _parse {
+    use crate::parser::{BinaryReader, Parse, ParserError};
+    use super::*;
+
+    impl Parse<Exceptions> for Exceptions {
+        fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParserError> {
+            buf.check_bytes(2, "exceptions")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let len = unsafe { buf.unsafe_read_u16() };
+            buf.check_bytes((len * 2) as usize, "exceptions")?;
+
+            let mut exception_indexes = Vec::with_capacity(len as usize);
+            // SAFETY: Guaranteed by check_bytes
+            unsafe { buf.unsafe_read_u16_slice(&mut exception_indexes) }
+
+            Ok(Exceptions { exception_indexes })
+        }
+    }
+
+    impl Parse<MethodParameters> for MethodParameters {
+        fn parse(buf: &mut BinaryReader) -> Result<MethodParameters, ParserError> {
+            buf.check_bytes(2, "method parameters")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let count = unsafe { buf.unsafe_read_u16() };
+
+            let mut parameters = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                parameters.push(MethodParameter::parse(buf)?);
+            }
+
+            Ok(MethodParameters { parameters })
+        }
+    }
+
+    impl Parse<MethodParameter> for MethodParameter {
+        fn parse(buf: &mut BinaryReader) -> Result<MethodParameter, ParserError> {
+            // 2 name index, 2 access flags
+            buf.check_bytes(2 + 2, "method parameter")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let name_index = unsafe { buf.unsafe_read_u16() };
+            let access_flags = unsafe { buf.unsafe_read_u16() };
+            Ok(MethodParameter { name_index, access_flags })
+        }
+    }
+}
