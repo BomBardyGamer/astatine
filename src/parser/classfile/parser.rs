@@ -6,75 +6,73 @@ use crate::types::ClassFileVersion;
 
 impl Parse<ClassFile> for ClassFile {
     fn parse(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
-        Self::parse_impl(buf).map_err(classfile_err)
+        parse_impl(buf).map_err(classfile_err)
     }
 }
 
-impl ClassFile {
-    fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
-        read_and_check_magic(buf)?;
+fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
+    read_and_check_magic(buf)?;
 
-        let (minor_version, major_version): (u16, u16);
-        {
-            buf.check_bytes(2 + 2, "minor and major version")?;
+    let (minor_version, major_version): (u16, u16);
+    {
+        buf.check_bytes(2 + 2, "minor and major version")?;
 
-            // SAFETY: Both guaranteed by check_bytes
-            minor_version = unsafe { buf.unsafe_read_u16() };
-            major_version = unsafe { buf.unsafe_read_u16() };
-            check_major_minor(major_version, minor_version)?;
-        }
-
-        let pool = constantpool::Pool::parse(buf)
-            .map_err(|err| ParserError::new(format!("bad constant pool: {err}")))?;
-
-        // 2 for access flags, 2 for this class, 2 for super class
-        buf.check_bytes(2 + 2 + 2, "access flags, this class, super class")?;
-
-        // SAFETY: Next 3 reads guaranteed by above check_bytes
-        let access_flags = unsafe { buf.unsafe_read_u16() };
-        let this_class: constantpool::Index;
-        {
-            this_class = unsafe { buf.unsafe_read_u16() };
-            if !pool.is_valid_index(this_class) {
-                return ParserError::new("this class not in constant pool").into();
-            }
-        }
-        let super_class: constantpool::Index;
-        {
-            super_class = unsafe { buf.unsafe_read_u16() };
-            if super_class != 0 && !pool.is_valid_index(super_class) {
-                return ParserError::new("super class not in constant pool").into();
-            }
-        }
-
-        let mut interfaces: Vec<constantpool::Index>;
-        {
-            buf.check_bytes(2, "interfaces length")?;
-
-            // SAFETY: Guaranteed by check_bytes
-            let len = unsafe { buf.unsafe_read_u16() } as usize;
-            buf.check_bytes(len * 2, "interfaces")?;
-
-            interfaces = Vec::with_capacity(len);
-            // SAFETY: Guaranteed by check_bytes on length
-            unsafe {
-                buf.unsafe_read_u16_slice(&mut interfaces)
-            }
-        }
-
-        Ok(ClassFile {
-            minor_version,
-            major_version,
-            constant_pool: pool,
-            access_flags,
-            this_class,
-            super_class,
-            interfaces,
-            fields: vec![], // TODO: Fields
-            methods: vec![], // TODO: Methods
-            attributes: vec![], // TODO: Attributes
-        })
+        // SAFETY: Both guaranteed by check_bytes
+        minor_version = unsafe { buf.unsafe_read_u16() };
+        major_version = unsafe { buf.unsafe_read_u16() };
+        check_major_minor(major_version, minor_version)?;
     }
+
+    let pool = constantpool::Pool::parse(buf)
+        .map_err(|err| ParserError::new(format!("bad constant pool: {err}")))?;
+
+    // 2 for access flags, 2 for this class, 2 for super class
+    buf.check_bytes(2 + 2 + 2, "access flags, this class, super class")?;
+
+    // SAFETY: Next 3 reads guaranteed by above check_bytes
+    let access_flags = unsafe { buf.unsafe_read_u16() };
+    let this_class: constantpool::Index;
+    {
+        this_class = unsafe { buf.unsafe_read_u16() };
+        if !pool.is_valid_index(this_class) {
+            return ParserError::new("this class not in constant pool").into();
+        }
+    }
+    let super_class: constantpool::Index;
+    {
+        super_class = unsafe { buf.unsafe_read_u16() };
+        if super_class != 0 && !pool.is_valid_index(super_class) {
+            return ParserError::new("super class not in constant pool").into();
+        }
+    }
+
+    let mut interfaces: Vec<constantpool::Index>;
+    {
+        buf.check_bytes(2, "interfaces length")?;
+
+        // SAFETY: Guaranteed by check_bytes
+        let len = unsafe { buf.unsafe_read_u16() } as usize;
+        buf.check_bytes(len * 2, "interfaces")?;
+
+        interfaces = Vec::with_capacity(len);
+        // SAFETY: Guaranteed by check_bytes on length
+        unsafe {
+            buf.unsafe_read_u16_slice(&mut interfaces)
+        }
+    }
+
+    Ok(ClassFile {
+        minor_version,
+        major_version,
+        constant_pool: pool,
+        access_flags,
+        this_class,
+        super_class,
+        interfaces,
+        fields: vec![], // TODO: Fields
+        methods: vec![], // TODO: Methods
+        attributes: vec![], // TODO: Attributes
+    })
 }
 
 fn classfile_err(err: ParserError) -> ParserError {
