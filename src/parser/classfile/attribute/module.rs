@@ -137,3 +137,84 @@ pub struct ModuleProvides {
     index: constantpool::Index,
     with_index: Vec<constantpool::Index>,
 }
+
+mod _parse {
+    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
+    use crate::parser::{BinaryReader, Parse, ParserError};
+    use super::*;
+
+    impl Parse<Module> for Module {
+        fn parse(buf: &mut BinaryReader) -> Result<Module, ParserError> {
+            // 2 name index, 2 flags, 2 version index
+            buf.check_bytes(2 + 2 + 2, "module")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let name_index = unsafe { buf.unsafe_read_u16() };
+            let flags = unsafe { buf.unsafe_read_u16() };
+            let version_index = unsafe { buf.unsafe_read_u16() };
+
+            buf_read_named_type_vec!(ModuleRequires, requires, buf, "module - requires");
+            buf_read_named_type_vec!(ModuleExports, exports, buf, "module - exports");
+            buf_read_named_type_vec!(ModuleOpens, opens, buf, "module - opens");
+            buf_read_u16_vec!(uses, buf, "module - uses");
+            buf_read_named_type_vec!(ModuleProvides, provides, buf, "module - provides");
+
+            Ok(Module {
+                name_index,
+                flags,
+                version_index,
+                requires,
+                exports,
+                opens,
+                uses,
+                provides
+            })
+        }
+    }
+
+    impl Parse<ModuleRequires> for ModuleRequires {
+        fn parse(buf: &mut BinaryReader) -> Result<ModuleRequires, ParserError> {
+            // 2 index, 2 flags, 2 version index
+            buf.check_bytes(2 + 2 + 2, "module requires")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let index = unsafe { buf.unsafe_read_u16() };
+            let flags = unsafe { buf.unsafe_read_u16() };
+            let version_index = unsafe { buf.unsafe_read_u16() };
+            Ok(ModuleRequires { index, flags, version_index })
+        }
+    }
+
+    macro_rules! parse_exports_opens {
+        ($name: ident, $err_msg: expr) => {
+            impl Parse<$name> for $name {
+                fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+                    // 2 index, 2 flags, 2 to count
+                    buf.check_bytes(2 + 2 + 2, $err_msg)?;
+
+                    // SAFETY: Guaranteed by check_bytes
+                    let index = unsafe { buf.unsafe_read_u16() };
+                    let flags = unsafe { buf.unsafe_read_u16() };
+
+                    buf_read_u16_vec!(to_index, buf, "module exports");
+
+                    Ok($name { index, flags, to_index })
+                }
+            }
+        };
+    }
+    parse_exports_opens!(ModuleExports, "module exports");
+    parse_exports_opens!(ModuleOpens, "module opens");
+
+    impl Parse<ModuleProvides> for ModuleProvides {
+        fn parse(buf: &mut BinaryReader) -> Result<ModuleProvides, ParserError> {
+            buf.check_bytes(2, "module provides")?;
+
+            // SAFETY: Guaranteed by check_bytes
+            let index = unsafe { buf.unsafe_read_u16() };
+            buf_read_u16_vec!(with_index, buf, "module provides");
+
+            Ok(ModuleProvides { index, with_index })
+        }
+    }
+}

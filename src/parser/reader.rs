@@ -134,5 +134,36 @@ impl BinaryReader {
     }
 }
 
+#[macro_export]
+macro_rules! buf_read_u16_vec {
+    ($var_name: ident, $buf: expr, $error_msg: expr) => {
+        let mut $var_name;
+        {
+            let size = unsafe { $buf.unsafe_read_u16() };
+            $buf.check_bytes((size * 2) as usize, $error_msg)?;
+
+            $var_name = Vec::with_capacity(size as usize);
+            unsafe { $buf.unsafe_read_u16_slice(&mut $var_name) };
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! buf_read_named_type_vec {
+    ($typ: ident, $var_name: ident, $buf: expr, $error_msg: expr) => {
+        $buf.check_bytes(2, $error_msg)?;
+
+        let mut $var_name: Vec<$typ>;
+        {
+            let len = unsafe { $buf.unsafe_read_u16() };
+            $var_name = Vec::with_capacity(len as usize);
+
+            for _ in 0..len {
+                $var_name.push($typ::parse($buf).map_err(ParserError::wrap($error_msg))?);
+            }
+        }
+    };
+}
+
 pub struct EndOfBufferError;
 const END_OF_BUFFER: EndOfBufferError = EndOfBufferError{};
