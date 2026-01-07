@@ -33,6 +33,22 @@ macro_rules! attr_names {
 }
 
 pub enum ClassFileAttribute {
+    Signature(Signature),
+    RuntimeVisibleAnnotations(annotations::RuntimeVisible),
+    RuntimeInvisibleAnnotations(annotations::RuntimeInvisible),
+    Synthetic(Synthetic),
+    Deprecated(Deprecated),
+    SourceFile(classfile::SourceFile),
+    InnerClasses(classfile::InnerClasses),
+    EnclosingMethod(classfile::EnclosingMethod),
+    BootstrapMethods(classfile::BootstrapMethods),
+    Module(module::Module),
+    ModulePackages(module::ModulePackages),
+    ModuleMainClass(module::ModuleMainClass),
+    NestHost(classfile::NestHost),
+    NestMembers(classfile::NestMembers),
+    Record(record::Record),
+    PermittedSubclasses(classfile::PermittedSubclasses),
 }
 
 impl ClassFileAttribute {
@@ -58,6 +74,12 @@ impl ClassFileAttribute {
 }
 
 pub enum FieldAttribute {
+    Signature(Signature),
+    RuntimeVisibleAnnotations(annotations::RuntimeVisible),
+    RuntimeInvisibleAnnotations(annotations::RuntimeInvisible),
+    Synthetic(Synthetic),
+    Deprecated(Deprecated),
+    ConstantValue(field::ConstantValue),
 }
 
 impl FieldAttribute {
@@ -72,6 +94,17 @@ impl FieldAttribute {
 }
 
 pub enum MethodAttribute {
+    Signature(Signature),
+    RuntimeVisibleAnnotations(annotations::RuntimeVisible),
+    RuntimeInvisibleAnnotations(annotations::RuntimeInvisible),
+    Synthetic(Synthetic),
+    Deprecated(Deprecated),
+    Code(code::Code),
+    Exceptions(method::Exceptions),
+    RuntimeVisibleParameterAnnotations(annotations::ParameterRuntimeVisible),
+    RuntimeInvisibleParameterAnnotations(annotations::ParameterRuntimeInvisible),
+    AnnotationDefault(method::AnnotationDefault),
+    MethodParameters(method::MethodParameters),
 }
 
 impl MethodAttribute {
@@ -91,6 +124,9 @@ impl MethodAttribute {
 }
 
 pub enum RecordAttribute {
+    Signature(Signature),
+    RuntimeVisibleAnnotations(annotations::RuntimeVisible),
+    RuntimeInvisibleAnnotations(annotations::RuntimeInvisible),
 }
 
 impl RecordAttribute {
@@ -102,6 +138,7 @@ impl RecordAttribute {
 }
 
 pub enum CodeAttribute {
+    StackMapTable(code::StackMapTable),
 }
 
 impl CodeAttribute {
