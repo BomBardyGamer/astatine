@@ -35,6 +35,16 @@ impl MethodParameter {
     }
 }
 
+pub struct AnnotationDefault {
+    value: super::annotations::ElementValue
+}
+
+impl AnnotationDefault {
+    pub fn value(&self) -> &super::annotations::ElementValue {
+        &self.value
+    }
+}
+
 mod _attr_name {
     use super::*;
     use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
@@ -47,6 +57,7 @@ mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u16_vec};
     use crate::parser::{BinaryReader, Parse, ParserError};
     use super::*;
+    use super::super::annotations;
 
     impl Parse<Exceptions> for Exceptions {
         fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParserError> {
@@ -72,6 +83,14 @@ mod _parse {
             let name_index = unsafe { buf.unsafe_read_u16() };
             let access_flags = unsafe { buf.unsafe_read_u16() };
             Ok(MethodParameter { name_index, access_flags })
+        }
+    }
+
+    impl Parse<AnnotationDefault> for AnnotationDefault {
+        fn parse(buf: &mut BinaryReader) -> Result<AnnotationDefault, ParserError> {
+            let value = annotations::ElementValue::parse(buf)
+                .map_err(ParserError::wrap("annotation default - default value"))?;
+            Ok(AnnotationDefault { value })
         }
     }
 }
