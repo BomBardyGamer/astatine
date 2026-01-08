@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::constantpool;
+use crate::loader::classfile::constantpool;
 
 pub struct ConstantValue {
     value_index: constantpool::Index,
@@ -27,13 +27,13 @@ impl ConstantValue {
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+    use crate::loader::classfile::attribute::names::{Names, Nameable, impl_attr_name};
 
     impl_attr_name!(ConstantValue, CONSTANT_VALUE);
 }
 
 mod _parse {
-    use crate::parser::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParserError};
     use super::*;
 
     impl Parse<ConstantValue> for ConstantValue {

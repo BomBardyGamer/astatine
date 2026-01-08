@@ -15,7 +15,7 @@
 
 use std::cmp::min;
 use std::ptr;
-use crate::parser::ParserError;
+use crate::loader::parse::ParserError;
 
 pub struct BinaryReader {
     buf: Vec<u8>,

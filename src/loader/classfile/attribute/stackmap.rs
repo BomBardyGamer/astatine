@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::constantpool;
+use crate::loader::classfile::constantpool;
 
 pub enum Frame {
     Same { frame_type: u8 },
@@ -82,7 +82,7 @@ pub enum VerificationType {
 mod _parse {
     use crate::buf_read_named_type_vec;
     use super::*;
-    use crate::parser::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParserError};
 
     impl Parse<Frame> for Frame {
         fn parse(buf: &mut BinaryReader) -> Result<Frame, ParserError> {

@@ -13,8 +13,8 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::attribute::annotations;
-use crate::parser::classfile::constantpool::Index;
+use crate::loader::classfile::attribute::annotations;
+use crate::loader::classfile::constantpool::Index;
 
 pub struct RuntimeVisible {
     annotations: Vec<TypeAnnotation>,
@@ -26,7 +26,7 @@ pub struct RuntimeInvisible {
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::{Nameable, Names, impl_attr_name};
+    use crate::loader::classfile::attribute::names::{Nameable, Names, impl_attr_name};
 
     impl_attr_name!(RuntimeVisible, RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
     impl_attr_name!(RuntimeInvisible, RUNTIME_INVISIBLE_TYPE_ANNOTATIONS);
@@ -99,8 +99,8 @@ pub struct LocalVarInfoEntry {
 mod _parse {
     use num_traits::FromPrimitive;
     use crate::buf_read_named_type_vec;
-    use crate::parser::{BinaryReader, Parse, ParserError};
-    use crate::parser::classfile::attribute::annotations::Element;
+    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::classfile::attribute::annotations::Element;
     use super::*;
 
     macro_rules! impl_type_annotation_attr {

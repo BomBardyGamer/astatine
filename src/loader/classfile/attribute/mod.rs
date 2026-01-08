@@ -29,7 +29,7 @@ pub use _parse::*;
 
 use std::sync::OnceLock;
 use self::names::{Names, Nameable};
-use crate::parser::classfile::constantpool;
+use crate::loader::classfile::constantpool;
 
 macro_rules! attr_names {
     ($($name: ident),+) => {
@@ -181,7 +181,7 @@ pub struct Deprecated {}
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::impl_attr_name;
+    use crate::loader::classfile::attribute::names::impl_attr_name;
 
     impl_attr_name!(Signature, SIGNATURE);
     impl_attr_name!(Synthetic, SYNTHETIC);
@@ -190,7 +190,7 @@ mod _attr_name {
 
 mod _parse {
     use super::*;
-    use crate::parser::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParserError};
 
     impl Parse<Signature> for Signature {
         fn parse(buf: &mut BinaryReader) -> Result<Signature, ParserError> {

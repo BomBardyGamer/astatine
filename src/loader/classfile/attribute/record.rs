@@ -13,8 +13,8 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::attribute::RecordAttribute;
-use crate::parser::classfile::constantpool;
+use crate::loader::classfile::attribute::RecordAttribute;
+use crate::loader::classfile::constantpool;
 
 pub struct Record {
     components: Vec<Component>,
@@ -28,14 +28,14 @@ pub struct Component {
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+    use crate::loader::classfile::attribute::names::{Names, Nameable, impl_attr_name};
 
     impl_attr_name!(Record, RECORD);
 }
 
 mod _parse {
     use crate::buf_read_named_type_vec;
-    use crate::parser::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParserError};
     use super::*;
 
     impl Parse<Record> for Record {

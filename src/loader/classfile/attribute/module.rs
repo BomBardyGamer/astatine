@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::constantpool;
+use crate::loader::classfile::constantpool;
 
 pub struct Module {
     name_index: constantpool::Index,
@@ -82,7 +82,7 @@ impl ModuleMainClass {
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+    use crate::loader::classfile::attribute::names::{Names, Nameable, impl_attr_name};
 
     impl_attr_name!(Module, MODULE);
     impl_attr_name!(ModulePackages, MODULE_PACKAGES);
@@ -155,7 +155,7 @@ pub struct ModuleProvides {
 
 mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u16_vec};
-    use crate::parser::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParserError};
     use super::*;
 
     impl Parse<Module> for Module {

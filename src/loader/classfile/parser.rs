@@ -14,8 +14,8 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use super::{constantpool, ClassFile};
-use crate::parser::{Parse, ParserError};
-use crate::parser::reader::BinaryReader;
+use crate::loader::{Parse, ParserError};
+use crate::loader::reader::BinaryReader;
 use crate::{buf_read_u16_vec, types};
 use crate::types::ClassFileVersion;
 

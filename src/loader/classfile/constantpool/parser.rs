@@ -15,8 +15,8 @@
 
 use num_traits::FromPrimitive;
 use super::*;
-use crate::parser::{Parse, ParserError};
-use crate::parser::reader::BinaryReader;
+use crate::loader::{Parse, ParserError};
+use crate::loader::reader::BinaryReader;
 use crate::types::methodhandle;
 
 impl Parse<Pool> for Pool {

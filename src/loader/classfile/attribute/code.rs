@@ -13,8 +13,8 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::parser::classfile::attribute::CodeAttribute;
-use crate::parser::classfile::attribute::stackmap;
+use crate::loader::classfile::attribute::CodeAttribute;
+use crate::loader::classfile::attribute::stackmap;
 
 pub struct Code {
     max_stack: u16,
@@ -83,7 +83,7 @@ impl StackMapTable {
 
 mod _attr_name {
     use super::*;
-    use crate::parser::classfile::attribute::names::{Names, Nameable, impl_attr_name};
+    use crate::loader::classfile::attribute::names::{Names, Nameable, impl_attr_name};
 
     impl_attr_name!(Code, CODE);
     impl_attr_name!(StackMapTable, STACK_MAP_TABLE);
@@ -93,7 +93,7 @@ mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u8_vec_lensize};
     use super::*;
     use super::stackmap::Frame;
-    use crate::parser::{Parse, ParserError, BinaryReader};
+    use crate::loader::{Parse, ParserError, BinaryReader};
 
     impl Parse<Code> for Code {
         fn parse(buf: &mut BinaryReader) -> Result<Code, ParserError> {

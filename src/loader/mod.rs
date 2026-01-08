@@ -13,14 +13,9 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-#[macro_use]
-extern crate enum_primitive_derive;
-extern crate num_traits;
-
+pub mod classfile;
+mod reader;
+mod parse;
 mod loader;
-pub mod types;
-mod class;
 
-fn main() {
-    // TODO
-}
+pub use reader::BinaryReader;
