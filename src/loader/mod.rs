@@ -16,6 +16,6 @@
 pub mod classfile;
 mod reader;
 mod parse;
-mod loader;
 
 pub use reader::BinaryReader;
+pub use parse::{Parse, ParserError};
