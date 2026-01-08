@@ -10,7 +10,9 @@ use crate::types::errors;
 /// The implementation of this is inspired by Vec internals and the
 /// Rustonomicon's Vec page: https://doc.rust-lang.org/nomicon/vec/vec.html
 ///
-/// This does NOT behave like a vector at all though, 
+/// This does not behave like a Vec at all though. It is fixed size, all the
+/// memory for it is allocated on creation, and all elements are uninitialized
+/// by default. This behaves more like arrays in other languages.
 pub struct Array<T> {
     ptr: NonNull<T>,
     len: usize
@@ -32,7 +34,7 @@ impl<T> Array<T> {
         let alloc = unsafe { alloc(layout) };
 
         // Safe to unwrap here as we know the pointer is non-null
-        NonNull::new(alloc as *mut T).ok_or()
+        NonNull::new(alloc as *mut T).ok_or(errors::OutOfMemoryError)
     }
 
     pub const fn len(&self) -> usize {
