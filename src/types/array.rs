@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use std::alloc::{alloc, Layout};
+use std::alloc::{alloc, dealloc, Layout};
 use std::ptr::NonNull;
 use crate::types::errors;
 
@@ -101,6 +101,28 @@ impl<T> Array<T> {
 
     fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
+    }
+}
+
+impl<T> Drop for Array<T> {
+    fn drop(&mut self) {
+        if self.len == 0 {
+            return;
+        }
+
+        // Drop all values if they are initialized
+        for i in 0..self.len {
+            if let Some(v) = self.get(i) {
+                drop(*v)
+            }
+        }
+
+        // Safe to unwrap as we know this layout works, else we wouldn't have been able to
+        // create the Array in the first place
+        let layout = Layout::array::<T>(self.len).unwrap();
+        unsafe {
+            dealloc(self.ptr() as *mut u8, layout)
+        }
     }
 }
 
