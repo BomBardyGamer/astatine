@@ -35,8 +35,18 @@ pub struct Array<T> {
 
 impl<T> Array<T> {
     pub fn new(len: usize) -> Result<Self, errors::OutOfMemoryError> {
+        if len == 0 {
+            // When len is 0, we don't need to (and shouldn't) allocate
+            return Ok(Self::empty())
+        }
+
         let ptr = Self::alloc_mem(len)?;
         Ok(Self { ptr, len })
+    }
+
+    pub const fn empty() -> Array<T> {
+        let ptr = NonNull::dangling();
+        Self { ptr, len: 0 }
     }
 
     fn alloc_mem(size: usize) -> Result<NonNull<T>, errors::OutOfMemoryError> {
@@ -47,8 +57,6 @@ impl<T> Array<T> {
 
         // SAFETY: The size of type T is non-zero and it is well-aligned.
         let alloc = unsafe { alloc(layout) };
-
-        // Safe to unwrap here as we know the pointer is non-null
         NonNull::new(alloc as *mut T).ok_or(errors::OutOfMemoryError)
     }
 
@@ -57,6 +65,7 @@ impl<T> Array<T> {
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
+        // This also safeguards for len == 0
         if index >= self.len {
             return None;
         }
@@ -80,6 +89,7 @@ impl<T> Array<T> {
     }
 
     pub fn set(&mut self, index: usize, v: T) -> Result<(), OutOfBoundsError> {
+        // This also safeguards for len == 0
         if index >= self.len {
             return Err(OutOfBoundsError);
         }
