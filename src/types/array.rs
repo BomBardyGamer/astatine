@@ -79,6 +79,18 @@ impl<T> Array<T> {
         Some(r)
     }
 
+    // This function is indended for use by Drop
+    // Caller must guarantee that index is in range
+    unsafe fn get_and_drop(&self, index: usize) {
+        assert!(index < self.len, "index out of bounds");
+
+        let ptr = unsafe { self.ptr().add(index) };
+        if ptr.is_null() {
+            return
+        }
+        unsafe { ptr.drop_in_place() }
+    }
+
     // Same as get, but without bounds checking
     // SAFETY: If the value at index is null or out of bounds, behaviour is undefined
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
@@ -110,11 +122,9 @@ impl<T> Drop for Array<T> {
             return;
         }
 
-        // Drop all values if they are initialized
+        // Drop all values owned by array
         for i in 0..self.len {
-            if let Some(v) = self.get(i) {
-                drop(*v)
-            }
+            unsafe { self.get_and_drop(i) }
         }
 
         // Safe to unwrap as we know this layout works, else we wouldn't have been able to
