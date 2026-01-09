@@ -14,10 +14,11 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
+use crate::types::AccessFlags;
 
 pub struct Module {
     name_index: constantpool::Index,
-    flags: u16,
+    flags: AccessFlags,
     version_index: constantpool::Index,
     requires: Vec<ModuleRequires>,
     exports: Vec<ModuleExports>,
@@ -31,7 +32,7 @@ impl Module {
         self.name_index
     }
 
-    pub fn flags(&self) -> u16 {
+    pub fn flags(&self) -> AccessFlags {
         self.flags
     }
 
@@ -89,20 +90,6 @@ mod _attr_name {
     impl_attr_name!(ModuleMainClass, MODULE_MAIN_CLASS);
 }
 
-#[repr(u16)]
-#[derive(Primitive, Debug, PartialEq, Copy, Clone)]
-pub enum ModuleFlag {
-    // Applies to the module attribute, requires, exports, and opens declarations
-    Synthetic = 0x1000,
-    Mandated = 0x8000,
-
-    // Applies to the module attribute and requires declarations
-    Open = 0x0020,
-
-    // Applies to requires declarations only
-    StaticPhase = 0x0040,
-}
-
 // Defines a part of a module with the index and flags variables and a third variable.
 // requires, exports, and opens all have three variables, two of them (index and flags)
 // being shared amongst them.
@@ -110,7 +97,7 @@ macro_rules! module_part {
     ($name: ident, $attr_name: ident, $attr_ty: ty) => {
         pub struct $name {
             index: constantpool::Index,
-            flags: u16,
+            flags: AccessFlags,
             $attr_name: $attr_ty,
         }
 
@@ -119,7 +106,7 @@ macro_rules! module_part {
                 self.index
             }
 
-            pub fn flags(&self) -> u16 {
+            pub fn flags(&self) -> AccessFlags {
                 self.flags
             }
         }
@@ -155,11 +142,11 @@ pub struct ModuleProvides {
 
 mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u16_vec};
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
 
     impl Parse<Module> for Module {
-        fn parse(buf: &mut BinaryReader) -> Result<Module, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Module, ParseError> {
             // 2 name index, 2 flags, 2 version index
             buf.check_bytes(2 + 2 + 2, "module")?;
 
@@ -180,7 +167,7 @@ mod _parse {
 
             Ok(Module {
                 name_index,
-                flags,
+                flags: AccessFlags::new(flags),
                 version_index,
                 requires,
                 exports,
@@ -192,7 +179,7 @@ mod _parse {
     }
 
     impl Parse<ModuleRequires> for ModuleRequires {
-        fn parse(buf: &mut BinaryReader) -> Result<ModuleRequires, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<ModuleRequires, ParseError> {
             // 2 index, 2 flags, 2 version index
             buf.check_bytes(2 + 2 + 2, "module requires")?;
 
@@ -200,14 +187,14 @@ mod _parse {
             let index = unsafe { buf.unsafe_read_u16() };
             let flags = unsafe { buf.unsafe_read_u16() };
             let version_index = unsafe { buf.unsafe_read_u16() };
-            Ok(ModuleRequires { index, flags, version_index })
+            Ok(ModuleRequires { index, flags: AccessFlags::new(flags), version_index })
         }
     }
 
     macro_rules! parse_exports_opens {
         ($name: ident, $err_msg: expr) => {
             impl Parse<$name> for $name {
-                fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+                fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                     // 2 index, 2 flags, 2 to count
                     buf.check_bytes(2 + 2 + 2, $err_msg)?;
 
@@ -216,7 +203,7 @@ mod _parse {
                     let flags = unsafe { buf.unsafe_read_u16() };
                     buf_read_u16_vec!(to_index, buf, "module exports");
 
-                    Ok($name { index, flags, to_index })
+                    Ok($name { index, flags: AccessFlags::new(flags), to_index })
                 }
             }
         };
@@ -225,7 +212,7 @@ mod _parse {
     parse_exports_opens!(ModuleOpens, "module opens");
 
     impl Parse<ModuleProvides> for ModuleProvides {
-        fn parse(buf: &mut BinaryReader) -> Result<ModuleProvides, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<ModuleProvides, ParseError> {
             buf.check_bytes(2, "module provides")?;
 
             // SAFETY: Guaranteed by check_bytes

@@ -56,43 +56,46 @@ impl Frame {
     }
 }
 
-const VERIFICATION_TYPE_TOP: u8 = 0;
-const VERIFICATION_TYPE_INTEGER: u8 = 1;
-const VERIFICATION_TYPE_FLOAT: u8 = 2;
-const VERIFICATION_TYPE_DOUBLE: u8 = 3;
-const VERIFICATION_TYPE_LONG: u8 = 4;
-const VERIFICATION_TYPE_NULL: u8 = 5;
-const VERIFICATION_TYPE_UNINIT_THIS: u8 = 6;
-const VERIFICATION_TYPE_OBJECT: u8 = 7;
-const VERIFICATION_TYPE_UNINIT: u8 = 8;
 #[repr(u8)]
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum VerificationType {
-    Top = VERIFICATION_TYPE_TOP,
-    Integer = VERIFICATION_TYPE_INTEGER,
-    Float = VERIFICATION_TYPE_FLOAT,
-    Double = VERIFICATION_TYPE_DOUBLE,
-    Long = VERIFICATION_TYPE_LONG,
-    Null = VERIFICATION_TYPE_NULL,
-    UninitializedThis = VERIFICATION_TYPE_UNINIT_THIS,
-    Object { pool_index: constantpool::Index } = VERIFICATION_TYPE_OBJECT,
-    Uninitialized { offset: u16 } = VERIFICATION_TYPE_UNINIT,
+    Top = VerificationType::TOP,
+    Integer = VerificationType::INTEGER,
+    Float = VerificationType::FLOAT,
+    Double = VerificationType::DOUBLE,
+    Long = VerificationType::LONG,
+    Null = VerificationType::NULL,
+    UninitializedThis = VerificationType::UNINIT_THIS,
+    Object { pool_index: constantpool::Index } = VerificationType::OBJECT,
+    Uninitialized { offset: u16 } = VerificationType::UNINIT,
+}
+
+impl VerificationType {
+    const TOP: u8 = 0;
+    const INTEGER: u8 = 1;
+    const FLOAT: u8 = 2;
+    const DOUBLE: u8 = 3;
+    const LONG: u8 = 4;
+    const NULL: u8 = 5;
+    const UNINIT_THIS: u8 = 6;
+    const OBJECT: u8 = 7;
+    const UNINIT: u8 = 8;
 }
 
 mod _parse {
     use crate::buf_read_named_type_vec;
     use super::*;
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
 
     impl Parse<Frame> for Frame {
-        fn parse(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Frame, ParseError> {
             buf.check_bytes(1, "stack map frame")?;
 
             // SAFETY: Guaranteed by check_bytes
             let frame_type = unsafe { buf.unsafe_read_u8() };
             if frame_type > 127 && frame_type < 247 {
                 // This range is reserved for future use and is this invalid
-                return ParserError::new(format!("stack map frame - invalid frame type {frame_type}")).into()
+                return ParseError::new(format!("stack map frame - invalid frame type {frame_type}")).into()
             }
 
             match frame_type {
@@ -110,23 +113,23 @@ mod _parse {
         }
     }
 
-    fn parse_same_locals_one_stack_item(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
+    fn parse_same_locals_one_stack_item(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParseError> {
         let stack = VerificationType::parse(buf)
-            .map_err(ParserError::wrap("same locals one stack item - stack"))?;
+            .map_err(ParseError::wrap("same locals one stack item - stack"))?;
         Ok(Frame::SameLocalsOneStackItem { frame_type, stack })
     }
 
-    fn parse_same_locals_one_stack_item_extended(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
+    fn parse_same_locals_one_stack_item_extended(buf: &mut BinaryReader) -> Result<Frame, ParseError> {
         buf.check_bytes(2, "same locals one stack item extended - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
         let stack = VerificationType::parse(buf)
-            .map_err(ParserError::wrap("same locals one stack item extended - stack"))?;
+            .map_err(ParseError::wrap("same locals one stack item extended - stack"))?;
         Ok(Frame::SameLocalsOneStackItemExtended { offset_delta, stack })
     }
 
-    fn parse_chop(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
+    fn parse_chop(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParseError> {
         buf.check_bytes(2, "chop - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -134,7 +137,7 @@ mod _parse {
         Ok(Frame::Chop { frame_type, offset_delta })
     }
 
-    fn parse_same_frame_extended(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
+    fn parse_same_frame_extended(buf: &mut BinaryReader) -> Result<Frame, ParseError> {
         buf.check_bytes(2, "same frame extended - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -142,7 +145,7 @@ mod _parse {
         Ok(Frame::SameExtended { offset_delta })
     }
 
-    fn parse_append(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParserError> {
+    fn parse_append(buf: &mut BinaryReader, frame_type: u8) -> Result<Frame, ParseError> {
         buf.check_bytes(2, "append - offset delta")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -154,13 +157,13 @@ mod _parse {
 
         for i in 0..num_locals {
             let local = VerificationType::parse(buf)
-                .map_err(ParserError::wrap(format!("append - locals - idx {i}")))?;
+                .map_err(ParseError::wrap(format!("append - locals - idx {i}")))?;
             locals.push(local);
         }
         Ok(Frame::Append { frame_type, offset_delta, locals })
     }
 
-    fn parse_full(buf: &mut BinaryReader) -> Result<Frame, ParserError> {
+    fn parse_full(buf: &mut BinaryReader) -> Result<Frame, ParseError> {
         buf.check_bytes(2, "full")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -175,29 +178,29 @@ mod _parse {
     }
 
     impl Parse<VerificationType> for VerificationType {
-        fn parse(buf: &mut BinaryReader) -> Result<VerificationType, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<VerificationType, ParseError> {
             buf.check_bytes(1, "stack map verification type")?;
 
             let tag = unsafe { buf.unsafe_read_u8() };
             match tag {
-                VERIFICATION_TYPE_TOP => Ok(VerificationType::Top),
-                VERIFICATION_TYPE_INTEGER => Ok(VerificationType::Integer),
-                VERIFICATION_TYPE_FLOAT => Ok(VerificationType::Float),
-                VERIFICATION_TYPE_DOUBLE => Ok(VerificationType::Double),
-                VERIFICATION_TYPE_LONG => Ok(VerificationType::Long),
-                VERIFICATION_TYPE_NULL => Ok(VerificationType::Null),
-                VERIFICATION_TYPE_UNINIT_THIS => Ok(VerificationType::UninitializedThis),
-                VERIFICATION_TYPE_OBJECT => {
+                VerificationType::TOP => Ok(VerificationType::Top),
+                VerificationType::INTEGER => Ok(VerificationType::Integer),
+                VerificationType::FLOAT => Ok(VerificationType::Float),
+                VerificationType::DOUBLE => Ok(VerificationType::Double),
+                VerificationType::LONG => Ok(VerificationType::Long),
+                VerificationType::NULL => Ok(VerificationType::Null),
+                VerificationType::UNINIT_THIS => Ok(VerificationType::UninitializedThis),
+                VerificationType::OBJECT => {
                     buf.check_bytes(2, "stack map verification type - object")?;
                     let pool_index = unsafe { buf.unsafe_read_u16() };
                     Ok(VerificationType::Object { pool_index })
                 },
-                VERIFICATION_TYPE_UNINIT => {
+                VerificationType::UNINIT => {
                     buf.check_bytes(2, "stack map verification type - uninitialized")?;
                     let offset = unsafe { buf.unsafe_read_u16() };
                     Ok(VerificationType::Uninitialized { offset })
                 },
-                _ => ParserError::new(format!("invalid verification type tag {tag}")).into()
+                _ => ParseError::new(format!("invalid verification type tag {tag}")).into()
             }
         }
     }

@@ -13,10 +13,15 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-pub mod primitives;
+mod primitives;
 pub mod methodhandle;
-pub mod versions;
-pub mod array;
-pub mod errors;
+mod versions;
+mod array;
+mod errors;
+mod access_flags;
 
+pub use primitives::{Jbyte, Jshort, Jint, Jlong, Jchar, Jfloat, Jdouble, Jboolean};
 pub use versions::{ClassFileVersion, CURRENT_VIRTUAL_MACHINE_VERSION};
+pub use array::{Array, OutOfBoundsError};
+pub use errors::*;
+pub use access_flags::AccessFlags;

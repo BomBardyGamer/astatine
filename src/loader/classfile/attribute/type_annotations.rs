@@ -99,14 +99,14 @@ pub struct LocalVarInfoEntry {
 mod _parse {
     use num_traits::FromPrimitive;
     use crate::buf_read_named_type_vec;
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
     use crate::loader::classfile::attribute::annotations::Element;
     use super::*;
 
     macro_rules! impl_type_annotation_attr {
         ($name: ident, $err_msg: expr, $err_msg_idx: expr) => {
             impl Parse<$name> for $name {
-                fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+                fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                     buf_read_named_type_vec!(TypeAnnotation, annotations, buf, $err_msg, $err_msg_idx);
                     Ok($name { annotations })
                 }
@@ -121,7 +121,7 @@ mod _parse {
         "runtime invisible type annotations - idx {}");
 
     impl Parse<TypeAnnotation> for TypeAnnotation {
-        fn parse(buf: &mut BinaryReader) -> Result<TypeAnnotation, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<TypeAnnotation, ParseError> {
             buf.check_bytes(1, "type annotation - target type")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -130,7 +130,7 @@ mod _parse {
             let target_type = TargetType::from_u8(raw_type)
                 .ok_or_else(|| {
                     let msg = format!("type annotation - invalid target type {raw_type}");
-                    return ParserError::new(msg)
+                    return ParseError::new(msg)
                 })?;
             let target_info = parse_target_info(buf, target_type)?;
 
@@ -154,7 +154,7 @@ mod _parse {
         }
     }
 
-    fn parse_target_info(buf: &mut BinaryReader, target_type: TargetType) -> Result<TargetInfo, ParserError> {
+    fn parse_target_info(buf: &mut BinaryReader, target_type: TargetType) -> Result<TargetInfo, ParseError> {
         let r = match target_type {
             TargetType::Class | TargetType::Method => parse_info_type_param(buf),
             TargetType::Supertype => parse_info_supertype(buf),
@@ -177,10 +177,10 @@ mod _parse {
                 TargetType::GenericConstructorMethodReferenceExpression |
                 TargetType::GenericMethodReferenceExpression => parse_info_type_argument(buf)
         };
-        r.map_err(ParserError::wrap("type annotation"))
+        r.map_err(ParseError::wrap("type annotation"))
     }
 
-    fn parse_info_type_param(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_type_param(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(1, "type parameter target - index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -188,7 +188,7 @@ mod _parse {
         Ok(TargetInfo::TypeParameter { index })
     }
 
-    fn parse_info_supertype(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_supertype(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(2, "type parameter target - supertype")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -196,7 +196,7 @@ mod _parse {
         Ok(TargetInfo::Supertype { index })
     }
 
-    fn parse_info_type_param_bound(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_type_param_bound(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(1 + 1, "type parameter bound target - type parameter index, bound index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -206,7 +206,7 @@ mod _parse {
         Ok(TargetInfo::ParameterBound { type_parameter_index, bound_index })
     }
 
-    fn parse_info_formal_param(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_formal_param(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(1, "formal parameter target - index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -214,7 +214,7 @@ mod _parse {
         Ok(TargetInfo::FormalParameter { index })
     }
 
-    fn parse_info_throws(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_throws(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(2, "throws target - index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -222,13 +222,13 @@ mod _parse {
         Ok(TargetInfo::Throws { type_index: index })
     }
 
-    fn parse_info_local_var(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_local_var(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf_read_named_type_vec!(LocalVarInfoEntry, table, buf,
             "local var target - table", "local var target - table idx {}");
         Ok(TargetInfo::LocalVar { table })
     }
 
-    fn parse_info_catch(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_catch(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(2, "catch target - exception table index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -236,7 +236,7 @@ mod _parse {
         Ok(TargetInfo::Catch { exception_table_index })
     }
 
-    fn parse_info_offset(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_offset(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(2, "offset target - offset")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -244,7 +244,7 @@ mod _parse {
         Ok(TargetInfo::Offset(offset))
     }
 
-    fn parse_info_type_argument(buf: &mut BinaryReader) -> Result<TargetInfo, ParserError> {
+    fn parse_info_type_argument(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
         buf.check_bytes(2 + 1, "type argument target - offset, index")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -255,7 +255,7 @@ mod _parse {
     }
 
     impl Parse<PathPart> for PathPart {
-        fn parse(buf: &mut BinaryReader) -> Result<PathPart, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<PathPart, ParseError> {
             buf.check_bytes(1 + 1, "type path kind, type argument index")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -267,7 +267,7 @@ mod _parse {
     }
 
     impl Parse<LocalVarInfoEntry> for LocalVarInfoEntry {
-        fn parse(buf: &mut BinaryReader) -> Result<LocalVarInfoEntry, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<LocalVarInfoEntry, ParseError> {
             buf.check_bytes(2 + 2 + 2, "local var - start pc, length, index")?;
 
             // SAFETY: Guaranteed by check_bytes

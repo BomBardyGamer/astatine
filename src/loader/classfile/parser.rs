@@ -14,18 +14,18 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use super::{constantpool, ClassFile};
-use crate::loader::{Parse, ParserError};
+use crate::loader::{Parse, ParseError};
 use crate::loader::reader::BinaryReader;
 use crate::{buf_read_u16_vec, types};
-use crate::types::ClassFileVersion;
+use crate::types::{AccessFlags, ClassFileVersion};
 
 impl Parse<ClassFile> for ClassFile {
-    fn parse(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<ClassFile, ParseError> {
         parse_impl(buf).map_err(classfile_err)
     }
 }
 
-fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
+fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParseError> {
     read_and_check_magic(buf)?;
 
     let (minor_version, major_version): (u16, u16);
@@ -39,20 +39,20 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
     }
 
     let pool = constantpool::Pool::parse(buf)
-        .map_err(|err| ParserError::new(format!("bad constant pool: {err}")))?;
+        .map_err(|err| ParseError::new(format!("bad constant pool: {err}")))?;
 
     // 2 for access flags, 2 for this class, 2 for super class
     buf.check_bytes(2 + 2 + 2, "access flags, this class, super class")?;
 
     // SAFETY: Next 3 reads guaranteed by above check_bytes
-    let access_flags = unsafe { buf.unsafe_read_u16() };
+    let flags = unsafe { buf.unsafe_read_u16() };
     let this_class = unsafe { buf.unsafe_read_u16() };
     if !pool.is_valid_index(this_class) {
-        return ParserError::new("this class not in constant pool").into();
+        return ParseError::new("this class not in constant pool").into();
     }
     let super_class = unsafe { buf.unsafe_read_u16() };
     if super_class != 0 && !pool.is_valid_index(super_class) {
-        return ParserError::new("super class not in constant pool").into();
+        return ParseError::new("super class not in constant pool").into();
     }
 
     buf_read_u16_vec!(interfaces, buf, "interfaces");
@@ -61,7 +61,7 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
         minor_version,
         major_version,
         constant_pool: pool,
-        access_flags,
+        access_flags: AccessFlags::new(flags),
         this_class,
         super_class,
         interfaces,
@@ -71,11 +71,11 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParserError> {
     })
 }
 
-fn classfile_err(err: ParserError) -> ParserError {
-    ParserError::new(format!("malformed class file: {err:?}"))
+fn classfile_err(err: ParseError) -> ParseError {
+    ParseError::new(format!("malformed class file: {err:?}"))
 }
 
-fn read_and_check_magic(buf: &mut BinaryReader) -> Result<(), ParserError> {
+fn read_and_check_magic(buf: &mut BinaryReader) -> Result<(), ParseError> {
     const CLASS_FILE_MAGIC_NUMBER: u32 = 0xCAFEBABE;
 
     buf.check_bytes(4, "classfile magic")?;
@@ -84,33 +84,33 @@ fn read_and_check_magic(buf: &mut BinaryReader) -> Result<(), ParserError> {
     let magic = unsafe { buf.unsafe_read_u32() };
     match magic {
         CLASS_FILE_MAGIC_NUMBER => Ok(()),
-        _ => ParserError::new(format!("invalid magic {magic} (not a classfile)")).into()
+        _ => ParseError::new(format!("invalid magic {magic} (not a classfile)")).into()
     }
 }
 
-fn check_major_minor(major: u16, minor: u16) -> Result<(), ParserError> {
+fn check_major_minor(major: u16, minor: u16) -> Result<(), ParseError> {
     const MIN_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_1;
     const MAX_SUPPORTED: ClassFileVersion = ClassFileVersion::Java1_2;
     const SUPPORT_PREVIEW: bool = false; // TODO: Will we ever support preview features?
 
     if major < MIN_SUPPORTED as u16 {
         let msg = format!("major version {major} not supported (min is {MIN_SUPPORTED})");
-        return ParserError::new(msg).into();
+        return ParseError::new(msg).into();
     }
     if major > MAX_SUPPORTED as u16 {
         let msg = format!("major version {major} not supported (max is {MAX_SUPPORTED})");
-        return ParserError::new(msg).into();
+        return ParseError::new(msg).into();
     }
 
     if major > ClassFileVersion::Java12 as u16 {
         if minor != 0 && minor != 65535 {
             let msg = format!("minor version must be 0 or 65535 for classfiles major {major}, was {minor}");
-            return ParserError::new(msg).into();
+            return ParseError::new(msg).into();
         }
 
         if minor == 65535 {
             if major != types::CURRENT_VIRTUAL_MACHINE_VERSION as u16 {
-                return ParserError::new("Astatine only supports preview features for its current version").into();
+                return ParseError::new("Astatine only supports preview features for its current version").into();
             }
         }
     }

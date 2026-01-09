@@ -33,11 +33,11 @@ mod _attr_name {
 }
 
 mod _parse {
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
 
     impl Parse<ConstantValue> for ConstantValue {
-        fn parse(buf: &mut BinaryReader) -> Result<ConstantValue, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<ConstantValue, ParseError> {
             buf.check_bytes(2, "constant value")?;
 
             // SAFETY: Guaranteed by check_bytes

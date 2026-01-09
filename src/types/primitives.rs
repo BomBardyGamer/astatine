@@ -13,14 +13,14 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-pub type Byte = i8;
-pub type Short = i16;
-pub type Int = i32;
-pub type Long = i64;
+pub type Jbyte = i8;
+pub type Jshort = i16;
+pub type Jint = i32;
+pub type Jlong = i64;
 
-pub type Char = u16; // UTF-16 encoded character value represented as an unsigned 16-bit integer
+pub type Jchar = u16; // UTF-16 encoded character value represented as an unsigned 16-bit integer
 
-pub type Float = f32;
-pub type Double = f64;
+pub type Jfloat = f32;
+pub type Jdouble = f64;
 
-pub type Boolean = bool;
+pub type Jboolean = bool;

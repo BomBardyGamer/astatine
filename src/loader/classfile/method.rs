@@ -13,46 +13,30 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::loader::{Parse, ParserError};
+use crate::loader::{Parse, ParseError};
 use crate::loader::reader::BinaryReader;
+use crate::types::AccessFlags;
 use super::{attribute, constantpool};
 
 pub struct Method {
-    access_flags: u16,
+    access_flags: AccessFlags,
     name_index: constantpool::Index,
     descriptor_index: constantpool::Index,
     attributes: Vec<attribute::MethodAttribute>,
 }
 
-#[repr(u16)]
-#[derive(Primitive, Debug, PartialEq, Copy, Clone)]
-pub enum AccessFlag {
-    Public = 0x0001,
-    Private = 0x0002,
-    Protected = 0x0004,
-    Static = 0x0008,
-    Final = 0x0010,
-    Synchronized = 0x0020,
-    Bridge = 0x0040, // Prefixed 'bridge$' and used to access inner class privates
-    Varargs = 0x0080, // Takes variable arguments in source code
-    Native = 0x0100,
-    Abstract = 0x0400,
-    Strict = 0x0800, // `strictfp`
-    Synthetic = 0x1000, // Doesn't show up in source code
-}
-
 impl Parse<Method> for Method {
-    fn parse(buf: &mut BinaryReader) -> Result<Method, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<Method, ParseError> {
         // 2 access flags, 2 name index, 2 descriptor index
         buf.check_bytes(2 + 2 + 2, "access flags, name index, descriptor index").map_err(method_err)?;
 
         // SAFETY: Guaranteed by check_bytes
-        let access_flags = unsafe { buf.unsafe_read_u16() };
+        let flags = unsafe { buf.unsafe_read_u16() };
         let name_index = unsafe { buf.unsafe_read_u16() };
         let descriptor_index = unsafe { buf.unsafe_read_u16() };
 
         Ok(Method {
-            access_flags,
+            access_flags: AccessFlags::new(flags),
             name_index,
             descriptor_index,
             attributes: vec![] // TODO: Attributes
@@ -60,6 +44,6 @@ impl Parse<Method> for Method {
     }
 }
 
-fn method_err(err: ParserError) -> ParserError {
-    ParserError::new(format!("bad method: {err:?}"))
+fn method_err(err: ParseError) -> ParseError {
+    ParseError::new(format!("bad method: {err:?}"))
 }

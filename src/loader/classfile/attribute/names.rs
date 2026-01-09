@@ -35,7 +35,7 @@ macro_rules! impl_attr_name {
 }
 pub(crate) use impl_attr_name;
 
-pub enum Names {}
+pub struct Names;
 
 // ClassFile | field_info | method_info | record_component_info | Code
 impl Names {

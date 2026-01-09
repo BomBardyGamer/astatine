@@ -13,14 +13,13 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::types::methodhandle;
-use crate::types::primitives;
+use crate::types::{methodhandle, Jdouble, Jfloat, Jint, Jlong};
 
 macro_rules! tag {
     ($name: ident, $tag: ident) => {
         impl $name {
-            pub const fn tag() -> super::EntryTag {
-                super::EntryTag::$tag
+            pub const fn tag() -> super::Tag {
+                super::Tag::$tag
             }
         }
     };
@@ -92,13 +91,13 @@ impl IntegerInfo {
         Self { value: v as i32 }
     }
 
-    pub const fn value(&self) -> primitives::Int {
+    pub const fn value(&self) -> Jint {
         self.value
     }
 }
 
-impl Into<primitives::Int> for IntegerInfo {
-    fn into(self) -> primitives::Int {
+impl Into<Jint> for IntegerInfo {
+    fn into(self) -> Jint {
         self.value
     }
 }
@@ -113,13 +112,13 @@ impl FloatInfo {
         Self { value: f32::from_bits(v) }
     }
 
-    pub const fn value(&self) -> primitives::Float {
+    pub const fn value(&self) -> Jfloat {
         self.value
     }
 }
 
-impl Into<primitives::Float> for FloatInfo {
-    fn into(self) -> primitives::Float {
+impl Into<Jfloat> for FloatInfo {
+    fn into(self) -> Jfloat {
         self.value
     }
 }
@@ -135,13 +134,13 @@ impl LongInfo {
         Self { value: v as i64 }
     }
 
-    pub const fn value(&self) -> primitives::Long {
+    pub const fn value(&self) -> Jlong {
         self.value
     }
 }
 
-impl Into<primitives::Long> for LongInfo {
-    fn into(self) -> primitives::Long {
+impl Into<Jlong> for LongInfo {
+    fn into(self) -> Jlong {
         self.value
     }
 }
@@ -157,13 +156,13 @@ impl DoubleInfo {
         Self { value: f64::from_bits(v) }
     }
 
-    pub const fn value(&self) -> primitives::Double {
+    pub const fn value(&self) -> Jdouble {
         self.value
     }
 }
 
-impl Into<primitives::Double> for DoubleInfo {
-    fn into(self) -> primitives::Double {
+impl Into<Jdouble> for DoubleInfo {
+    fn into(self) -> Jdouble {
         self.value
     }
 }

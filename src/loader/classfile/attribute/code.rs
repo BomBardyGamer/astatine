@@ -93,10 +93,10 @@ mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u8_vec_lensize};
     use super::*;
     use super::stackmap::Frame;
-    use crate::loader::{Parse, ParserError, BinaryReader};
+    use crate::loader::{Parse, ParseError, BinaryReader};
 
     impl Parse<Code> for Code {
-        fn parse(buf: &mut BinaryReader) -> Result<Code, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Code, ParseError> {
             // 2 max stack, 2 max locals, 4 code length
             buf.check_bytes(2 + 2, "code - max stack, max locals, code length")?;
 
@@ -119,7 +119,7 @@ mod _parse {
     }
 
     impl Parse<Exception> for Exception {
-        fn parse(buf: &mut BinaryReader) -> Result<Exception, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Exception, ParseError> {
             buf.check_bytes(2 + 2 + 2 + 2, "exception")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -133,7 +133,7 @@ mod _parse {
     }
 
     impl Parse<StackMapTable> for StackMapTable {
-        fn parse(buf: &mut BinaryReader) -> Result<StackMapTable, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<StackMapTable, ParseError> {
             buf_read_named_type_vec!(Frame, entries, buf,
                 "code - stack map table", "code - stack map table - idx {}");
             Ok(StackMapTable { entries })

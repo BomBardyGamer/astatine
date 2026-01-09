@@ -18,6 +18,8 @@ use crate::loader::classfile::constantpool;
 pub use _attr_name::*;
 pub use _parse::*;
 
+use crate::types::AccessFlags;
+
 pub struct SourceFile {
     source_file_index: constantpool::Index,
 }
@@ -42,7 +44,7 @@ pub struct InnerClass {
     index: constantpool::Index,
     outer_index: constantpool::Index,
     name_index: constantpool::Index,
-    access_flags: u16,
+    access_flags: AccessFlags,
 }
 
 impl InnerClass {
@@ -58,7 +60,7 @@ impl InnerClass {
         self.name_index
     }
 
-    pub fn inner_class_access_flags(&self) -> u16 {
+    pub fn inner_class_access_flags(&self) -> AccessFlags {
         self.access_flags
     }
 }
@@ -149,10 +151,11 @@ mod _attr_name {
 mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u16_vec};
     use super::*;
-    use crate::loader::{Parse, ParserError, BinaryReader};
+    use crate::loader::{Parse, ParseError, BinaryReader};
+    use crate::types::AccessFlags;
 
     impl Parse<SourceFile> for SourceFile {
-        fn parse(buf: &mut BinaryReader) -> Result<SourceFile, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<SourceFile, ParseError> {
             buf.check_bytes(2, "source file")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -162,7 +165,7 @@ mod _parse {
     }
 
     impl Parse<InnerClasses> for InnerClasses {
-        fn parse(buf: &mut BinaryReader) -> Result<InnerClasses, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<InnerClasses, ParseError> {
             buf_read_named_type_vec!(InnerClass, inner_classes, buf,
                 "inner classes", "inner classes - idx {}");
             Ok(InnerClasses { inner_classes })
@@ -170,7 +173,7 @@ mod _parse {
     }
 
     impl Parse<InnerClass> for InnerClass {
-        fn parse(buf: &mut BinaryReader) -> Result<InnerClass, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<InnerClass, ParseError> {
             // 2 index, 2 outer index, 2 name index, 2 access flags
             buf.check_bytes(2 + 2 + 2 + 2, "inner class")?;
 
@@ -178,14 +181,14 @@ mod _parse {
             let index = unsafe { buf.unsafe_read_u16() };
             let outer_index = unsafe { buf.unsafe_read_u16() };
             let name_index = unsafe { buf.unsafe_read_u16() };
-            let access_flags = unsafe { buf.unsafe_read_u16() };
+            let flags = unsafe { buf.unsafe_read_u16() };
 
-            Ok(InnerClass { index, outer_index, name_index, access_flags })
+            Ok(InnerClass { index, outer_index, name_index, access_flags: AccessFlags::new(flags) })
         }
     }
 
     impl Parse<EnclosingMethod> for EnclosingMethod {
-        fn parse(buf: &mut BinaryReader) -> Result<EnclosingMethod, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<EnclosingMethod, ParseError> {
             // 2 class index, 2 method index
             buf.check_bytes(2 + 2, "enclosing method")?;
 
@@ -196,7 +199,7 @@ mod _parse {
     }
 
     impl Parse<BootstrapMethods> for BootstrapMethods {
-        fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethods, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethods, ParseError> {
             buf_read_named_type_vec!(BootstrapMethod, methods, buf,
                 "bootstrap methods", "bootstrap methods - idx {}");
             Ok(BootstrapMethods { methods })
@@ -204,7 +207,7 @@ mod _parse {
     }
 
     impl Parse<BootstrapMethod> for BootstrapMethod {
-        fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethod, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethod, ParseError> {
             buf.check_bytes(2, "method ref")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -216,7 +219,7 @@ mod _parse {
     }
 
     impl Parse<NestHost> for NestHost {
-        fn parse(buf: &mut BinaryReader) -> Result<NestHost, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<NestHost, ParseError> {
             buf.check_bytes(2, "nest host")?;
 
             // SAFETY: Guaranteed by check_bytes
@@ -226,14 +229,14 @@ mod _parse {
     }
 
     impl Parse<NestMembers> for NestMembers {
-        fn parse(buf: &mut BinaryReader) -> Result<NestMembers, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<NestMembers, ParseError> {
             buf_read_u16_vec!(classes, buf, "nest members");
             Ok(NestMembers { classes })
         }
     }
 
     impl Parse<PermittedSubclasses> for PermittedSubclasses {
-        fn parse(buf: &mut BinaryReader) -> Result<PermittedSubclasses, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<PermittedSubclasses, ParseError> {
             buf_read_u16_vec!(classes, buf, "permitted subclasses");
             Ok(PermittedSubclasses { classes })
         }

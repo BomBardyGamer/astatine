@@ -15,7 +15,7 @@
 
 use std::cmp::min;
 use std::ptr;
-use crate::loader::parse::ParserError;
+use crate::loader::ParseError;
 
 pub struct BinaryReader {
     buf: Vec<u8>,
@@ -143,10 +143,10 @@ impl BinaryReader {
         }
     }
 
-    pub fn check_bytes(&self, num: usize, msg: impl Into<String>) -> Result<(), ParserError> {
+    pub fn check_bytes(&self, num: usize, msg: impl Into<String>) -> Result<(), ParseError> {
         match self.has_bytes(num) {
             true => Ok(()),
-            false => ParserError::not_enough_bytes(msg.into())
+            false => ParseError::not_enough_bytes(msg.into())
         }
     }
 
@@ -204,7 +204,7 @@ macro_rules! buf_read_named_type_vec {
             $var_name = Vec::with_capacity(len as usize);
 
             for i in 0..len {
-                $var_name.push($typ::parse($buf).map_err(ParserError::wrap(format!($error_idx, i)))?);
+                $var_name.push($typ::parse($buf).map_err(ParseError::wrap(format!($error_idx, i)))?);
             }
         }
     };

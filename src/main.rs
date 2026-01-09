@@ -17,15 +17,9 @@
 extern crate enum_primitive_derive;
 extern crate num_traits;
 
-use crate::loader::{BinaryReader, Parse};
-use crate::loader::classfile::ClassFile;
-
 mod loader;
 pub mod types;
 
 fn main() {
-    let mut r = BinaryReader::new(Vec::<u8>::new());
-    let c = ClassFile::parse(&mut r).unwrap();
-    c.constant_pool.get_integer(1);
     // TODO
 }

@@ -14,6 +14,7 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
+use crate::types::AccessFlags;
 
 pub struct Exceptions {
     exception_indexes: Vec<constantpool::Index>,
@@ -37,7 +38,7 @@ impl MethodParameters {
 
 pub struct MethodParameter {
     name_index: constantpool::Index,
-    access_flags: u16,
+    access_flags: AccessFlags,
 }
 
 impl MethodParameter {
@@ -45,7 +46,7 @@ impl MethodParameter {
         self.name_index
     }
 
-    pub fn access_flags(&self) -> u16 {
+    pub fn access_flags(&self) -> AccessFlags {
         self.access_flags
     }
 }
@@ -70,19 +71,19 @@ mod _attr_name {
 
 mod _parse {
     use crate::{buf_read_named_type_vec, buf_read_u16_vec};
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
     use super::super::annotations;
 
     impl Parse<Exceptions> for Exceptions {
-        fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParseError> {
             buf_read_u16_vec!(exception_indexes, buf, "exceptions");
             Ok(Exceptions { exception_indexes })
         }
     }
 
     impl Parse<MethodParameters> for MethodParameters {
-        fn parse(buf: &mut BinaryReader) -> Result<MethodParameters, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<MethodParameters, ParseError> {
             buf_read_named_type_vec!(MethodParameter, parameters, buf,
                 "method parameters", "method parameters - idx {}");
             Ok(MethodParameters { parameters })
@@ -90,21 +91,21 @@ mod _parse {
     }
 
     impl Parse<MethodParameter> for MethodParameter {
-        fn parse(buf: &mut BinaryReader) -> Result<MethodParameter, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<MethodParameter, ParseError> {
             // 2 name index, 2 access flags
             buf.check_bytes(2 + 2, "method parameter")?;
 
             // SAFETY: Guaranteed by check_bytes
             let name_index = unsafe { buf.unsafe_read_u16() };
-            let access_flags = unsafe { buf.unsafe_read_u16() };
-            Ok(MethodParameter { name_index, access_flags })
+            let flags = unsafe { buf.unsafe_read_u16() };
+            Ok(MethodParameter { name_index, access_flags: AccessFlags::new(flags) })
         }
     }
 
     impl Parse<AnnotationDefault> for AnnotationDefault {
-        fn parse(buf: &mut BinaryReader) -> Result<AnnotationDefault, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<AnnotationDefault, ParseError> {
             let value = annotations::ElementValue::parse(buf)
-                .map_err(ParserError::wrap("annotation default - default value"))?;
+                .map_err(ParseError::wrap("annotation default - default value"))?;
             Ok(AnnotationDefault { value })
         }
     }

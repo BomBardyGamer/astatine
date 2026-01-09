@@ -35,11 +35,11 @@ mod _attr_name {
 
 mod _parse {
     use crate::buf_read_named_type_vec;
-    use crate::loader::{BinaryReader, Parse, ParserError};
+    use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
 
     impl Parse<Record> for Record {
-        fn parse(buf: &mut BinaryReader) -> Result<Record, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Record, ParseError> {
             buf_read_named_type_vec!(Component, components, buf,
                 "record - components", "record - components - idx {}");
             Ok(Record { components })
@@ -47,7 +47,7 @@ mod _parse {
     }
 
     impl Parse<Component> for Component {
-        fn parse(buf: &mut BinaryReader) -> Result<Component, ParserError> {
+        fn parse(buf: &mut BinaryReader) -> Result<Component, ParseError> {
             buf.check_bytes(2 + 2, "name index, descriptor index")?;
 
             // SAFETY: Guaranteed by check_bytes

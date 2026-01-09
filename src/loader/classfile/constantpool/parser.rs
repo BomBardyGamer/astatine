@@ -15,18 +15,18 @@
 
 use num_traits::FromPrimitive;
 use super::*;
-use crate::loader::{Parse, ParserError};
+use crate::loader::{Parse, ParseError};
 use crate::loader::reader::BinaryReader;
 use crate::types::methodhandle;
 
 impl Parse<Pool> for Pool {
-    fn parse(buf: &mut BinaryReader) -> Result<Pool, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<Pool, ParseError> {
         buf.check_bytes(2, "constant pool")?;
 
         // SAFETY: Guaranteed by check_bytes
         let len = unsafe { buf.unsafe_read_u16() };
         let mut pool = Pool::new(len as usize)
-            .map_err(|_| ParserError::new("out of memory"))?; // TODO: Proper error handling
+            .map_err(|_| ParseError::new("out of memory"))?; // TODO: Proper error handling
 
         // Constant pool index starts from 1
         let mut idx = 1;
@@ -38,13 +38,13 @@ impl Parse<Pool> for Pool {
 
             let entry = r.map_err(|err| {
                 let msg = format!("bad constant pool entry {idx}: {err}");
-                return ParserError::new(msg);
+                return ParseError::new(msg);
             })?;
 
             pool.put(idx, tag, entry);
             idx += 1;
 
-            if tag == TAG_LONG || tag == TAG_DOUBLE {
+            if tag == Tag::LONG || tag == Tag::DOUBLE {
                 // Long and double take up 2 entries in constant pool
                 // Ref: https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.4.5
 
@@ -58,31 +58,31 @@ impl Parse<Pool> for Pool {
     }
 }
 
-fn parse_entry(buf: &mut BinaryReader, tag: u8) -> Result<Entry, ParserError> {
+fn parse_entry(buf: &mut BinaryReader, tag: u8) -> Result<Entry, ParseError> {
     match tag {
-        TAG_UTF8 => Utf8Info::parse(buf).map(Entry::Utf8),
-        TAG_INTEGER => IntegerInfo::parse(buf).map(Entry::Integer),
-        TAG_FLOAT => FloatInfo::parse(buf).map(Entry::Float),
-        TAG_LONG => LongInfo::parse(buf).map(Entry::Long),
-        TAG_DOUBLE => DoubleInfo::parse(buf).map(Entry::Double),
-        TAG_CLASS => UnresolvedClassInfo::parse(buf).map(Entry::UnresolvedClass),
-        TAG_STRING => UnresolvedStringInfo::parse(buf).map(Entry::UnresolvedString),
-        TAG_FIELDREF => FieldrefInfo::parse(buf).map(Entry::Fieldref),
-        TAG_METHODREF => MethodrefInfo::parse(buf).map(Entry::Methodref),
-        TAG_INTERFACE_METHODREF => InterfaceMethodrefInfo::parse(buf).map(Entry::InterfaceMethodref),
-        TAG_NAME_AND_TYPE => NameAndTypeInfo::parse(buf).map(Entry::NameAndType),
-        TAG_METHOD_HANDLE => MethodHandleInfo::parse(buf).map(Entry::MethodHandle),
-        TAG_METHOD_TYPE => MethodTypeInfo::parse(buf).map(Entry::MethodType),
-        TAG_DYNAMIC => DynamicInfo::parse(buf).map(Entry::Dynamic),
-        TAG_INVOKE_DYNAMIC => InvokeDynamicInfo::parse(buf).map(Entry::InvokeDynamic),
-        TAG_MODULE => ModuleInfo::parse(buf).map(Entry::Module),
-        TAG_PACKAGE => PackageInfo::parse(buf).map(Entry::Package),
-        _ => ParserError::new("invalid entry tag {tag}").into(),
+        Tag::UTF8 => Utf8Info::parse(buf).map(Entry::Utf8),
+        Tag::INTEGER => IntegerInfo::parse(buf).map(Entry::Integer),
+        Tag::FLOAT => FloatInfo::parse(buf).map(Entry::Float),
+        Tag::LONG => LongInfo::parse(buf).map(Entry::Long),
+        Tag::DOUBLE => DoubleInfo::parse(buf).map(Entry::Double),
+        Tag::CLASS => UnresolvedClassInfo::parse(buf).map(Entry::UnresolvedClass),
+        Tag::STRING => UnresolvedStringInfo::parse(buf).map(Entry::UnresolvedString),
+        Tag::FIELDREF => FieldrefInfo::parse(buf).map(Entry::Fieldref),
+        Tag::METHODREF => MethodrefInfo::parse(buf).map(Entry::Methodref),
+        Tag::INTERFACE_METHODREF => InterfaceMethodrefInfo::parse(buf).map(Entry::InterfaceMethodref),
+        Tag::NAME_AND_TYPE => NameAndTypeInfo::parse(buf).map(Entry::NameAndType),
+        Tag::METHOD_HANDLE => MethodHandleInfo::parse(buf).map(Entry::MethodHandle),
+        Tag::METHOD_TYPE => MethodTypeInfo::parse(buf).map(Entry::MethodType),
+        Tag::DYNAMIC => DynamicInfo::parse(buf).map(Entry::Dynamic),
+        Tag::INVOKE_DYNAMIC => InvokeDynamicInfo::parse(buf).map(Entry::InvokeDynamic),
+        Tag::MODULE => ModuleInfo::parse(buf).map(Entry::Module),
+        Tag::PACKAGE => PackageInfo::parse(buf).map(Entry::Package),
+        _ => ParseError::new("invalid entry tag {tag}").into(),
     }
 }
 
 impl Parse<Utf8Info> for Utf8Info {
-    fn parse(buf: &mut BinaryReader) -> Result<Utf8Info, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<Utf8Info, ParseError> {
         buf.check_bytes(2, "utf8")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -99,7 +99,7 @@ impl Parse<Utf8Info> for Utf8Info {
 macro_rules! parse_num32 {
     ($name: ident) => {
         impl Parse<$name> for $name {
-            fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+            fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                 buf.check_bytes(4, "integer/float")?;
 
                 // SAFETY: Guaranteed by check_bytes
@@ -115,7 +115,7 @@ parse_num32!(FloatInfo);
 macro_rules! parse_num64 {
     ($name: ident) => {
         impl Parse<$name> for $name {
-            fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+            fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                 // 4 for high bytes, 4 for low bytes
                 buf.check_bytes(4 + 4, "integer/float")?;
 
@@ -132,7 +132,7 @@ parse_num64!(LongInfo);
 parse_num64!(DoubleInfo);
 
 impl Parse<UnresolvedStringInfo> for UnresolvedStringInfo {
-    fn parse(buf: &mut BinaryReader) -> Result<UnresolvedStringInfo, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<UnresolvedStringInfo, ParseError> {
         buf.check_bytes(2, "string")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -144,7 +144,7 @@ impl Parse<UnresolvedStringInfo> for UnresolvedStringInfo {
 macro_rules! parse_ref {
     ($name: ident, $typ: expr) => {
         impl Parse<$name> for $name {
-            fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+            fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                 // 2 for class index, 2 for name and type index
                 buf.check_bytes(2 + 2, $typ)?;
 
@@ -162,7 +162,7 @@ parse_ref!(MethodrefInfo, "methodref");
 parse_ref!(InterfaceMethodrefInfo, "interface methodref");
 
 impl Parse<NameAndTypeInfo> for NameAndTypeInfo {
-    fn parse(buf: &mut BinaryReader) -> Result<NameAndTypeInfo, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<NameAndTypeInfo, ParseError> {
         // 2 for name index, 2 for descriptor index
         buf.check_bytes(2 + 2, "name and type")?;
 
@@ -175,14 +175,14 @@ impl Parse<NameAndTypeInfo> for NameAndTypeInfo {
 }
 
 impl Parse<MethodHandleInfo> for MethodHandleInfo {
-    fn parse(buf: &mut BinaryReader) -> Result<MethodHandleInfo, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<MethodHandleInfo, ParseError> {
         // 1 for reference kind, 2 for referenxe index
         buf.check_bytes(1 + 2, "method handle")?;
 
         // SAFETY: Guaranteed by check_bytes
         let ref_kind = unsafe { buf.unsafe_read_u8() };
         let reference_kind = methodhandle::Ref::from_u8(ref_kind)
-            .ok_or_else(|| ParserError::new("method handle - reference kind invalid"))?;
+            .ok_or_else(|| ParseError::new("method handle - reference kind invalid"))?;
         let reference_index = unsafe { buf.unsafe_read_u16() };
 
         Ok(MethodHandleInfo { reference_kind, reference_index })
@@ -190,7 +190,7 @@ impl Parse<MethodHandleInfo> for MethodHandleInfo {
 }
 
 impl Parse<MethodTypeInfo> for MethodTypeInfo {
-    fn parse(buf: &mut BinaryReader) -> Result<MethodTypeInfo, ParserError> {
+    fn parse(buf: &mut BinaryReader) -> Result<MethodTypeInfo, ParseError> {
         buf.check_bytes(2, "method type")?;
 
         // SAFETY: Guaranteed by check_bytes
@@ -202,7 +202,7 @@ impl Parse<MethodTypeInfo> for MethodTypeInfo {
 macro_rules! parse_dynamic {
     ($name: ident, $typ: expr) => {
         impl Parse<$name> for $name {
-            fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+            fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                 // 2 for bootstrap method attribute index, 2 for name and type index
                 buf.check_bytes(2 + 2, "dynamic")?;
 
@@ -221,7 +221,7 @@ parse_dynamic!(InvokeDynamicInfo, "invokedynamic");
 macro_rules! parse_nameable {
     ($name: ident, $typ: expr) => {
         impl Parse<$name> for $name {
-            fn parse(buf: &mut BinaryReader) -> Result<$name, ParserError> {
+            fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
                 buf.check_bytes(2, $typ)?;
 
                 // SAFETY: Guaranteed by check_bytes

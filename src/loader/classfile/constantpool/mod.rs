@@ -22,8 +22,7 @@ pub use entry::{
     IntegerInfo, InterfaceMethodrefInfo, InvokeDynamicInfo, LongInfo, MethodHandleInfo,
     MethodTypeInfo, MethodrefInfo, ModuleInfo, NameAndTypeInfo, PackageInfo, UnresolvedStringInfo, Utf8Info,
 };
-use crate::types::errors;
-use crate::types::array::Array;
+use crate::types::{Array, OutOfMemoryError};
 
 pub struct Pool {
     tags: Array<u8>,
@@ -34,9 +33,9 @@ pub type Index = u16;
 pub const INDEX_INVALID: Index = 0;
 
 macro_rules! pool_get_type {
-    ($fn_name: ident, $tag: expr, $info: ty, $enum_part: ident) => {
+    ($fn_name: ident, $tag: ident, $info: ty, $enum_part: ident) => {
         pub fn $fn_name(&self, idx: Index) -> Option<&$info> {
-            let entry = self.get_entry(idx, $tag)?;
+            let entry = self.get_entry(idx, Tag::$tag)?;
             // SAFETY: Guaranteed by tag check in get_entry
             if let Entry::$enum_part(info) = entry {
                 Some(info)
@@ -48,30 +47,30 @@ macro_rules! pool_get_type {
 }
 
 impl Pool {
-    fn new(size: usize) -> Result<Self, errors::OutOfMemoryError> {
+    fn new(size: usize) -> Result<Self, OutOfMemoryError> {
         let tags = Array::new(size)?;
         let constants = Array::new(size)?;
         Ok(Self { tags, constants })
     }
 
-    pool_get_type!(get_utf8, TAG_UTF8, Utf8Info, Utf8);
-    pool_get_type!(get_integer, TAG_INTEGER, IntegerInfo, Integer);
-    pool_get_type!(get_float, TAG_FLOAT, FloatInfo, Float);
-    pool_get_type!(get_long, TAG_LONG, LongInfo, Long);
-    pool_get_type!(get_double, TAG_DOUBLE, DoubleInfo, Double);
-    pool_get_type!(get_unresolved_class, TAG_CLASS, UnresolvedClassInfo, UnresolvedClass);
-    pool_get_type!(get_unresolved_string, TAG_STRING, UnresolvedStringInfo, UnresolvedString);
-    pool_get_type!(get_field_ref, TAG_FIELDREF, FieldrefInfo, Fieldref);
-    pool_get_type!(get_method_ref, TAG_METHODREF, MethodrefInfo, Methodref);
-    pool_get_type!(get_interface_method_ref, TAG_INTERFACE_METHODREF,
+    pool_get_type!(get_utf8, UTF8, Utf8Info, Utf8);
+    pool_get_type!(get_integer, INTEGER, IntegerInfo, Integer);
+    pool_get_type!(get_float, FLOAT, FloatInfo, Float);
+    pool_get_type!(get_long, LONG, LongInfo, Long);
+    pool_get_type!(get_double, DOUBLE, DoubleInfo, Double);
+    pool_get_type!(get_unresolved_class, CLASS, UnresolvedClassInfo, UnresolvedClass);
+    pool_get_type!(get_unresolved_string, STRING, UnresolvedStringInfo, UnresolvedString);
+    pool_get_type!(get_field_ref, FIELDREF, FieldrefInfo, Fieldref);
+    pool_get_type!(get_method_ref, METHODREF, MethodrefInfo, Methodref);
+    pool_get_type!(get_interface_method_ref, INTERFACE_METHODREF,
         InterfaceMethodrefInfo, InterfaceMethodref);
-    pool_get_type!(get_name_and_type, TAG_NAME_AND_TYPE, NameAndTypeInfo, NameAndType);
-    pool_get_type!(get_method_handle, TAG_METHOD_HANDLE, MethodHandleInfo, MethodHandle);
-    pool_get_type!(get_method_type, TAG_METHOD_TYPE, MethodTypeInfo, MethodType);
-    pool_get_type!(get_dynamic, TAG_DYNAMIC, DynamicInfo, Dynamic);
-    pool_get_type!(get_invoke_dynamic, TAG_INVOKE_DYNAMIC, InvokeDynamicInfo, InvokeDynamic);
-    pool_get_type!(get_module, TAG_MODULE, ModuleInfo, Module);
-    pool_get_type!(get_package, TAG_PACKAGE, PackageInfo, Package);
+    pool_get_type!(get_name_and_type, NAME_AND_TYPE, NameAndTypeInfo, NameAndType);
+    pool_get_type!(get_method_handle, METHOD_HANDLE, MethodHandleInfo, MethodHandle);
+    pool_get_type!(get_method_type, METHOD_TYPE, MethodTypeInfo, MethodType);
+    pool_get_type!(get_dynamic, DYNAMIC, DynamicInfo, Dynamic);
+    pool_get_type!(get_invoke_dynamic, INVOKE_DYNAMIC, InvokeDynamicInfo, InvokeDynamic);
+    pool_get_type!(get_module, MODULE, ModuleInfo, Module);
+    pool_get_type!(get_package, PACKAGE, PackageInfo, Package);
 
     fn get_entry(&self, idx: Index, required_tag: u8) -> Option<&Entry> {
         if idx == INDEX_INVALID {
@@ -100,7 +99,7 @@ impl Pool {
         let arr_idx = self.cp_idx_to_arr_idx(idx);
         self.put_raw(arr_idx, tag, entry);
 
-        if tag == TAG_LONG || tag == TAG_DOUBLE {
+        if tag == Tag::LONG || tag == Tag::DOUBLE {
             let next_idx = arr_idx + 1;
             self.put_invalid_raw(next_idx);
         }
@@ -112,7 +111,7 @@ impl Pool {
     }
 
     fn put_invalid_raw(&mut self, idx: usize) {
-        self.tags.set(idx, TAG_INVALID).expect("big problems");
+        self.tags.set(idx, Tag::INVALID).expect("big problems");
     }
 
     #[inline]
@@ -128,45 +127,47 @@ impl Pool {
     }
 }
 
-const TAG_INVALID: u8 = 0;
-const TAG_UTF8: u8 = 1;
-const TAG_INTEGER: u8 = 3;
-const TAG_FLOAT: u8 = 4;
-const TAG_LONG: u8 = 5;
-const TAG_DOUBLE: u8 = 6;
-const TAG_CLASS: u8 = 7;
-const TAG_STRING: u8 = 8;
-const TAG_FIELDREF: u8 = 9;
-const TAG_METHODREF: u8 = 10;
-const TAG_INTERFACE_METHODREF: u8 = 11;
-const TAG_NAME_AND_TYPE: u8 = 12;
-const TAG_METHOD_HANDLE: u8 = 15;
-const TAG_METHOD_TYPE: u8 = 16;
-const TAG_DYNAMIC: u8 = 17;
-const TAG_INVOKE_DYNAMIC: u8 = 18;
-const TAG_MODULE: u8 = 19;
-const TAG_PACKAGE: u8 = 20;
-
 #[repr(u8)]
 #[derive(Primitive, Debug, PartialEq, Copy, Clone)]
-pub enum EntryTag {
-    Utf8 = TAG_UTF8,
-    Integer = TAG_INTEGER,
-    Float = TAG_FLOAT,
-    Long = TAG_LONG,
-    Double = TAG_DOUBLE,
-    Class = TAG_CLASS,
-    String = TAG_STRING,
-    Fieldref = TAG_FIELDREF,
-    Methodref = TAG_METHODREF,
-    InterfaceMethodref = TAG_INTERFACE_METHODREF,
-    NameAndType = TAG_NAME_AND_TYPE,
-    MethodHandle = TAG_METHOD_HANDLE,
-    MethodType = TAG_METHOD_TYPE,
-    Dynamic = TAG_DYNAMIC,
-    InvokeDynamic = TAG_INVOKE_DYNAMIC,
-    Module = TAG_MODULE,
-    Package = TAG_PACKAGE,
+pub enum Tag {
+    Utf8 = Tag::UTF8,
+    Integer = Tag::INTEGER,
+    Float = Tag::FLOAT,
+    Long = Tag::LONG,
+    Double = Tag::DOUBLE,
+    Class = Tag::CLASS,
+    String = Tag::STRING,
+    Fieldref = Tag::FIELDREF,
+    Methodref = Tag::METHODREF,
+    InterfaceMethodref = Tag::INTERFACE_METHODREF,
+    NameAndType = Tag::NAME_AND_TYPE,
+    MethodHandle = Tag::METHOD_HANDLE,
+    MethodType = Tag::METHOD_TYPE,
+    Dynamic = Tag::DYNAMIC,
+    InvokeDynamic = Tag::INVOKE_DYNAMIC,
+    Module = Tag::MODULE,
+    Package = Tag::PACKAGE,
+}
+
+impl Tag {
+    const INVALID: u8 = 0;
+    const UTF8: u8 = 1;
+    const INTEGER: u8 = 3;
+    const FLOAT: u8 = 4;
+    const LONG: u8 = 5;
+    const DOUBLE: u8 = 6;
+    const CLASS: u8 = 7;
+    const STRING: u8 = 8;
+    const FIELDREF: u8 = 9;
+    const METHODREF: u8 = 10;
+    const INTERFACE_METHODREF: u8 = 11;
+    const NAME_AND_TYPE: u8 = 12;
+    const METHOD_HANDLE: u8 = 15;
+    const METHOD_TYPE: u8 = 16;
+    const DYNAMIC: u8 = 17;
+    const INVOKE_DYNAMIC: u8 = 18;
+    const MODULE: u8 = 19;
+    const PACKAGE: u8 = 20;
 }
 
 enum Entry {
@@ -188,92 +189,3 @@ enum Entry {
     Module(ModuleInfo),
     Package(PackageInfo),
 }
-// union Entry {
-//     utf8: Utf8Info,
-//     integer: IntegerInfo,
-//     float: FloatInfo,
-//     long: LongInfo,
-//     double: DoubleInfo,
-//     class: UnresolvedClassInfo,
-//     string: UnresolvedStringInfo,
-//     field_ref: FieldrefInfo,
-//     method_ref: MethodrefInfo,
-//     interface_method_ref: InterfaceMethodrefInfo,
-//     name_and_type: NameAndTypeInfo,
-//     method_handle: MethodHandleInfo,
-//     method_type: MethodTypeInfo,
-//     dynamic: DynamicInfo,
-//     invoke_dynamic: InvokeDynamicInfo,
-//     module: ModuleInfo,
-//     package: PackageInfo,
-// }
-
-// impl Entry {
-//     const fn utf8(info: Utf8Info) -> Entry {
-//         Entry { utf8: info }
-//     }
-//
-//     const fn integer(info: IntegerInfo) -> Entry {
-//         Entry { integer: info }
-//     }
-//
-//     const fn float(info: FloatInfo) -> Entry {
-//         Entry { float: info }
-//     }
-//
-//     const fn long(info: LongInfo) -> Entry {
-//         Entry { long: info }
-//     }
-//
-//     const fn double(info: DoubleInfo) -> Entry {
-//         Entry { double: info }
-//     }
-//
-//     const fn class(info: UnresolvedClassInfo) -> Entry {
-//         Entry { class: info }
-//     }
-//
-//     const fn string(info: UnresolvedStringInfo) -> Entry {
-//         Entry { string: info }
-//     }
-//
-//     const fn field_ref(info: FieldrefInfo) -> Entry {
-//         Entry { field_ref: info }
-//     }
-//
-//     const fn method_ref(info: MethodrefInfo) -> Entry {
-//         Entry { method_ref: info }
-//     }
-//
-//     const fn interface_method_ref(info: InterfaceMethodrefInfo) -> Entry {
-//         Entry { interface_method_ref: info }
-//     }
-//
-//     const fn name_and_type(info: NameAndTypeInfo) -> Entry {
-//         Entry { name_and_type: info }
-//     }
-//
-//     const fn method_handle(info: MethodHandleInfo) -> Entry {
-//         Entry { method_handle: info }
-//     }
-//
-//     const fn method_type(info: MethodTypeInfo) -> Entry {
-//         Entry { method_type: info }
-//     }
-//
-//     const fn dynamic(info: DynamicInfo) -> Entry {
-//         Entry { dynamic: info }
-//     }
-//
-//     const fn invoke_dynamic(info: InvokeDynamicInfo) -> Entry {
-//         Entry { invoke_dynamic: info }
-//     }
-//
-//     const fn module(info: ModuleInfo) -> Entry {
-//         Entry { module: info }
-//     }
-//
-//     const fn package(info: PackageInfo) -> Entry {
-//         Entry { package: info }
-//     }
-// }
