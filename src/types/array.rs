@@ -50,25 +50,18 @@ impl<T> Array<T> {
         //  is memory that exists and that we own, else we wouldn't've been
         //  able to allocate this array.
         let ptr = unsafe { self.ptr().add(index) };
-        if ptr.is_null() {
-            return None;
-        }
-
-        // SAFETY: We have just checked it's non-null, and we know it is aligned and in bounds
-        let v = unsafe { ptr.read() };
-        Some(v)
+        // SAFETY: If null, propagates up. If non-null, is guaranteed to be convertible to a ref
+        let r = unsafe { ptr.as_ref() }?;
+        Some(r)
     }
 
     // Same as get, but without bounds checking
+    // SAFETY: If the value at index is null or out of bounds, behaviour is undefined
     pub unsafe fn get_unchecked(&self, index: usize) -> &T {
         // SAFETY: Must be guaranteed by caller
         let ptr = unsafe { self.ptr().add(index) };
-        if ptr.is_null() {
-            panic!("get_unchecked at idx {} was null", index);
-        }
-
-        // SAFETY: Guaranteed to not be null by check above
-        unsafe { ptr.read() }
+        // SAFETY: Value is checked for null and ref will last as long as the array lasts
+        unsafe { &*ptr }
     }
 
     pub fn set(&mut self, index: usize, v: T) -> Result<(), OutOfBoundsError> {
