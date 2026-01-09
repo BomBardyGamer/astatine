@@ -24,10 +24,12 @@ impl Parse<Pool> for Pool {
         buf.check_bytes(2, "constant pool")?;
 
         // SAFETY: Guaranteed by check_bytes
-        let len = unsafe { buf.unsafe_read_u16() } as usize;
-        let mut pool = Pool { constants: Vec::with_capacity(len) };
+        let len = unsafe { buf.unsafe_read_u16() };
+        let mut pool = Pool::new(len as usize)
+            .map_err(|_| ParserError::new("out of memory"))?; // TODO: Proper error handling
 
-        let mut idx = 0;
+        // Constant pool index starts from 1
+        let mut idx = 1;
         while idx < len {
             buf.check_bytes(1, format!("constant pool tag at {idx}"))?;
 
@@ -39,15 +41,15 @@ impl Parse<Pool> for Pool {
                 return ParserError::new(msg);
             })?;
 
-            pool.put(idx as u16, entry);
+            pool.put(idx, tag, entry);
             idx += 1;
 
             if tag == TAG_LONG || tag == TAG_DOUBLE {
                 // Long and double take up 2 entries in constant pool
                 // Ref: https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.4.5
-                pool.put((idx + 1) as u16, Entry::Unusable);
 
-                // Add another 1 to the index for the unusable entry
+                // Just add another 1 to the index for the unusable entry as the pool
+                // already inserts the invalid entry
                 idx += 1;
             }
         }
@@ -63,8 +65,8 @@ fn parse_entry(buf: &mut BinaryReader, tag: u8) -> Result<Entry, ParserError> {
         TAG_FLOAT => FloatInfo::parse(buf).map(Entry::Float),
         TAG_LONG => LongInfo::parse(buf).map(Entry::Long),
         TAG_DOUBLE => DoubleInfo::parse(buf).map(Entry::Double),
-        TAG_CLASS => ClassInfo::parse(buf).map(Entry::Class),
-        TAG_STRING => StringInfo::parse(buf).map(Entry::String),
+        TAG_CLASS => UnresolvedClassInfo::parse(buf).map(Entry::UnresolvedClass),
+        TAG_STRING => UnresolvedStringInfo::parse(buf).map(Entry::UnresolvedString),
         TAG_FIELDREF => FieldrefInfo::parse(buf).map(Entry::Fieldref),
         TAG_METHODREF => MethodrefInfo::parse(buf).map(Entry::Methodref),
         TAG_INTERFACE_METHODREF => InterfaceMethodrefInfo::parse(buf).map(Entry::InterfaceMethodref),
@@ -102,7 +104,7 @@ macro_rules! parse_num32 {
 
                 // SAFETY: Guaranteed by check_bytes
                 let bytes = unsafe { buf.unsafe_read_u32() };
-                Ok($name { bytes })
+                Ok($name::from_bytes(bytes))
             }
         }
     };
@@ -121,7 +123,7 @@ macro_rules! parse_num64 {
                 let high_bytes = unsafe { buf.unsafe_read_u32() };
                 let low_bytes = unsafe { buf.unsafe_read_u32() };
 
-                Ok($name { bytes: ((high_bytes as u64) << 32) | (low_bytes as u64) })
+                Ok($name::from_bytes(low_bytes, high_bytes))
             }
         }
     };
@@ -129,13 +131,13 @@ macro_rules! parse_num64 {
 parse_num64!(LongInfo);
 parse_num64!(DoubleInfo);
 
-impl Parse<StringInfo> for StringInfo {
-    fn parse(buf: &mut BinaryReader) -> Result<StringInfo, ParserError> {
+impl Parse<UnresolvedStringInfo> for UnresolvedStringInfo {
+    fn parse(buf: &mut BinaryReader) -> Result<UnresolvedStringInfo, ParserError> {
         buf.check_bytes(2, "string")?;
 
         // SAFETY: Guaranteed by check_bytes
         let string_index = unsafe { buf.unsafe_read_u16() };
-        Ok(StringInfo { string_index })
+        Ok(UnresolvedStringInfo { string_index })
     }
 }
 
@@ -229,6 +231,6 @@ macro_rules! parse_nameable {
         }
     };
 }
-parse_nameable!(ClassInfo, "class");
+parse_nameable!(UnresolvedClassInfo, "class");
 parse_nameable!(ModuleInfo, "module");
 parse_nameable!(PackageInfo, "package");

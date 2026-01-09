@@ -23,6 +23,10 @@ pub struct BinaryReader {
 }
 
 impl BinaryReader {
+    pub fn new(buf: Vec<u8>) -> BinaryReader {
+        BinaryReader { buf, off: 0 }
+    }
+
     // Doesn't error with EOF as this function just reads as many bytes as it can from the buffer
     pub fn read(&mut self, out: &mut [u8]) -> usize {
         let read_len = min(self.buf.len() - self.off, out.len());

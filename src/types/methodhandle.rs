@@ -28,8 +28,8 @@ pub enum Ref {
 }
 
 impl Ref {
-    const MIN_REF: u8 = 1;
-    const MAX_REF: u8 = 9;
+    const MIN_REF: u8 = Ref::GetField as u8;
+    const MAX_REF: u8 = Ref::InvokeInterface as u8;
 
     pub const fn is_valid(raw: u8) -> bool {
         raw >= Self::MIN_REF && raw <= Self::MAX_REF

@@ -22,7 +22,7 @@ mod method;
 pub struct ClassFile {
     minor_version: u16,
     major_version: u16,
-    constant_pool: constantpool::Pool,
+    pub constant_pool: constantpool::Pool,
     access_flags: u16,
     this_class: constantpool::Index,
     super_class: constantpool::Index,
