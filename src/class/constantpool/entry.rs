@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
+use crate::class::constantpool::Pool;
 use crate::types::{methodhandle, Array, Jdouble, Jfloat, Jint, Jlong};
 
 macro_rules! tag {
@@ -42,6 +43,31 @@ macro_rules! name_info {
 }
 
 name_info!(UnresolvedClassInfo, Class);
+
+impl UnresolvedClassInfo {
+    pub fn resolve(&self, pool: &Pool) -> ClassInfo {
+        // TODO: Better handle this error
+        let utf8_name = pool.resolve_utf8(self.name_index)
+            .expect("name index for unresolved class info not in constant pool!");
+        ClassInfo { name: utf8_name.as_string() }
+    }
+}
+
+pub struct ClassInfo {
+    name: String
+}
+
+impl ClassInfo {
+    pub fn name(&self) -> String {
+        // TODO: This isn't ideal as it clones every time. We need to pool strings in
+        //  the future, so will sort out when we do that
+        self.name.clone()
+    }
+
+    pub fn name_str(&self) -> &str {
+        self.name.as_str()
+    }
+}
 
 macro_rules! ref_entry {
     ($name: ident, $tag: ident) => {
@@ -74,8 +100,27 @@ pub struct UnresolvedStringInfo {
 tag!(UnresolvedStringInfo, String);
 
 impl UnresolvedStringInfo {
-    pub const fn index(&self) -> super::Index {
-        self.string_index
+    pub fn resolve(&self, pool: &Pool) -> StringInfo {
+        // TODO: Better handle this error
+        let utf8 = pool.resolve_utf8(self.string_index)
+            .expect("string index for unresolved string info not in constant pool!");
+        StringInfo { value: utf8.as_string() }
+    }
+}
+
+pub struct StringInfo {
+    value: String
+}
+
+impl StringInfo {
+    pub fn as_string(&self) -> String {
+        // TODO: This isn't ideal as it clones every time. We need to pool strings in
+        //  the future, so will sort out when we do that
+        self.value.clone()
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.value.as_str()
     }
 }
 
@@ -162,13 +207,13 @@ impl Into<Jdouble> for DoubleInfo {
     }
 }
 
-pub struct NameAndTypeInfo {
+pub struct UnresolvedNameAndTypeInfo {
     pub(super) name_index: super::Index,
     pub(super) descriptor_index: super::Index,
 }
-tag!(NameAndTypeInfo, NameAndType);
+tag!(UnresolvedNameAndTypeInfo, NameAndType);
 
-impl NameAndTypeInfo {
+impl UnresolvedNameAndTypeInfo {
     pub const fn name_index(&self) -> super::Index {
         self.name_index
     }
@@ -176,13 +221,75 @@ impl NameAndTypeInfo {
     pub const fn descriptor_index(&self) -> super::Index {
         self.descriptor_index
     }
+
+    pub fn resolve(&self, pool: &Pool) -> NameAndTypeInfo {
+        // TODO: Better handle this error
+        let utf8_name = pool.resolve_utf8(self.name_index)
+            .expect("name index for unresolved name and type not in constant pool!");
+        let name = utf8_name.as_string();
+
+        // TODO: Better handle this error
+        let utf8_descriptor = pool.resolve_utf8(self.descriptor_index)
+            .expect("descriptor index for unresolved name and type not in constant pool!");
+        let descriptor = utf8_descriptor.as_string();
+
+        NameAndTypeInfo { name, descriptor }
+    }
+}
+
+pub struct NameAndTypeInfo {
+    name: String,
+    descriptor: String
+}
+
+impl NameAndTypeInfo {
+    pub fn name(&self) -> String {
+        // TODO: This isn't ideal as it clones every time. We need to pool strings in
+        //  the future, so will sort out when we do that
+        self.name.clone()
+    }
+
+    pub fn descriptor(&self) -> String {
+        // TODO: This isn't ideal as it clones every time. We need to pool strings in
+        //  the future, so will sort out when we do that
+        self.descriptor.clone()
+    }
 }
 
 // TODO: Figure out about how to do string stuff with this
-pub struct Utf8Info {
+pub struct UnresolvedUtf8Info {
     pub(super) bytes: Array<u8>
 }
-tag!(Utf8Info, Utf8);
+tag!(UnresolvedUtf8Info, Utf8);
+
+impl UnresolvedUtf8Info {
+    fn as_string(&self) -> String {
+        // SAFETY: The bytes Array is definitely initialized
+        let vec = unsafe { self.bytes.to_vec() };
+
+        // SAFETY: This is safe for 99% of cases.
+        // TODO: must figure out what to do about nulls being 2 bytes and any
+        //  chars more than 3 bytes
+        unsafe { String::from_utf8_unchecked(vec) }
+    }
+
+    pub(super) fn resolve(&self) -> Utf8Info {
+        let string = self.as_string();
+        Utf8Info { value: string }
+    }
+}
+
+pub struct Utf8Info {
+    value: String
+}
+
+impl Utf8Info {
+    pub fn as_string(&self) -> String {
+        // TODO: This isn't ideal as it clones every time. We need to pool strings in
+        //  the future, so will sort out when we do that
+        self.value.clone()
+    }
+}
 
 pub struct MethodHandleInfo {
     pub(super) reference_kind: methodhandle::Ref,

@@ -107,9 +107,28 @@ impl<T> Array<T> {
             return Err(OutOfBoundsError);
         }
 
-        let ptr = unsafe { self.ptr().add(index) };
-        unsafe { ptr.write(v) };
+        // SAFETY: Bounds have been checked above
+        unsafe { let _ = self.set_unchecked(index, v); }
         Ok(())
+    }
+
+    pub fn set_and_return(&mut self, index: usize, v: T) -> Result<&T, OutOfBoundsError> {
+        if index >= self.len {
+            return Err(OutOfBoundsError);
+        }
+
+        // SAFETY: Bounds have been checked above
+        let ptr = unsafe { self.set_unchecked(index, v) };
+        Ok(unsafe { &*ptr })
+    }
+
+    // SAFETY: Index in bounds must be checked by caller else behaviour is undefined
+    unsafe fn set_unchecked(&mut self, index: usize, v: T) -> *mut T {
+        // SAFETY: Memory is contiguous so this is fine
+        let ptr = unsafe { self.ptr().add(index) };
+        // SAFETY: We know we own this memory and it is allocated
+        unsafe { ptr.write(v) }
+        ptr
     }
 
     // SAFETY: Caller must guarantee that Array has been fully initialized
@@ -129,6 +148,16 @@ impl<T> Array<T> {
     #[inline]
     fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
+    }
+}
+
+impl<T: Clone> Array<T> {
+    // SAFETY: Caller must guarantee that Array has been fully initialized
+    // See: as_slice and as_slice_mut
+    pub unsafe fn to_vec(&self) -> Vec<T> {
+        // SAFETY: On the caller
+        let slice = unsafe { self.as_slice() };
+        slice.to_vec()
     }
 }
 

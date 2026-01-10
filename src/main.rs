@@ -21,6 +21,7 @@ extern crate num_traits;
 
 mod loader;
 pub mod types;
+mod class;
 
 fn main() {
     // TODO
