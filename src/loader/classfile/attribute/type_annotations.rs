@@ -15,13 +15,14 @@
 
 use crate::loader::classfile::attribute::annotations;
 use crate::loader::classfile::constantpool::Index;
+use crate::types::Array;
 
 pub struct RuntimeVisible {
-    annotations: Vec<TypeAnnotation>,
+    annotations: Array<TypeAnnotation>,
 }
 
 pub struct RuntimeInvisible {
-    annotations: Vec<TypeAnnotation>,
+    annotations: Array<TypeAnnotation>,
 }
 
 mod _attr_name {
@@ -37,10 +38,10 @@ pub struct TypeAnnotation {
     target_info: TargetInfo,
     target_path: Path,
     type_index: Index,
-    elements: Vec<annotations::Element>,
+    elements: Array<annotations::Element>,
 }
 
-pub type Path = Vec<PathPart>;
+pub type Path = Array<PathPart>;
 
 pub struct PathPart {
     type_path_kind: u8,
@@ -84,7 +85,7 @@ pub enum TargetInfo {
     Empty,
     FormalParameter { index: u8 },
     Throws { type_index: u16 },
-    LocalVar { table: Vec<LocalVarInfoEntry> },
+    LocalVar { table: Array<LocalVarInfoEntry> },
     Catch { exception_table_index: u16 },
     Offset(u16),
     TypeArgument { offset: u16, index: u8 },
@@ -98,7 +99,7 @@ pub struct LocalVarInfoEntry {
 
 mod _parse {
     use num_traits::FromPrimitive;
-    use crate::buf_read_named_type_vec;
+    use crate::buf_read_named_type_arr;
     use crate::loader::{BinaryReader, Parse, ParseError};
     use crate::loader::classfile::attribute::annotations::Element;
     use super::*;
@@ -107,7 +108,7 @@ mod _parse {
         ($name: ident, $err_msg: expr, $err_msg_idx: expr) => {
             impl Parse<$name> for $name {
                 fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
-                    buf_read_named_type_vec!(TypeAnnotation, annotations, buf, $err_msg, $err_msg_idx);
+                    buf_read_named_type_arr!(TypeAnnotation, annotations, buf, $err_msg, $err_msg_idx);
                     Ok($name { annotations })
                 }
             }
@@ -134,14 +135,14 @@ mod _parse {
                 })?;
             let target_info = parse_target_info(buf, target_type)?;
 
-            buf_read_named_type_vec!(PathPart, target_path, buf,
+            buf_read_named_type_arr!(PathPart, target_path, buf,
                 "type annotation - path", "type annotation - path - idx {}");
 
             buf.check_bytes(2, "type annotation - type index")?;
             // SAFETY: Guaranteed by check_bytes
             let type_index = unsafe { buf.unsafe_read_u16() };
 
-            buf_read_named_type_vec!(Element, elements, buf,
+            buf_read_named_type_arr!(Element, elements, buf,
                 "type annotation - elements", "type annotation - elements - idx {}");
 
             Ok(TypeAnnotation {
@@ -223,7 +224,7 @@ mod _parse {
     }
 
     fn parse_info_local_var(buf: &mut BinaryReader) -> Result<TargetInfo, ParseError> {
-        buf_read_named_type_vec!(LocalVarInfoEntry, table, buf,
+        buf_read_named_type_arr!(LocalVarInfoEntry, table, buf,
             "local var target - table", "local var target - table idx {}");
         Ok(TargetInfo::LocalVar { table })
     }

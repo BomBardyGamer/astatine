@@ -16,8 +16,8 @@
 use super::{constantpool, ClassFile};
 use crate::loader::{Parse, ParseError};
 use crate::loader::reader::BinaryReader;
-use crate::{buf_read_u16_vec, types};
-use crate::types::{AccessFlags, ClassFileVersion};
+use crate::{buf_read_u16_arr, types};
+use crate::types::{AccessFlags, Array, ClassFileVersion};
 
 impl Parse<ClassFile> for ClassFile {
     fn parse(buf: &mut BinaryReader) -> Result<ClassFile, ParseError> {
@@ -55,7 +55,7 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParseError> {
         return ParseError::new("super class not in constant pool").into();
     }
 
-    buf_read_u16_vec!(interfaces, buf, "interfaces");
+    buf_read_u16_arr!(interfaces, buf, "interfaces");
 
     Ok(ClassFile {
         minor_version,
@@ -65,9 +65,9 @@ fn parse_impl(buf: &mut BinaryReader) -> Result<ClassFile, ParseError> {
         this_class,
         super_class,
         interfaces,
-        fields: vec![], // TODO: Fields
-        methods: vec![], // TODO: Methods
-        attributes: vec![], // TODO: Attributes
+        fields: Array::empty(), // TODO: Fields
+        methods: Array::empty(), // TODO: Methods
+        attributes: Array::empty(), // TODO: Attributes
     })
 }
 

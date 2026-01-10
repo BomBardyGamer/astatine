@@ -14,17 +14,17 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
-use crate::types::AccessFlags;
+use crate::types::{AccessFlags, Array};
 
 pub struct Module {
     name_index: constantpool::Index,
     flags: AccessFlags,
     version_index: constantpool::Index,
-    requires: Vec<ModuleRequires>,
-    exports: Vec<ModuleExports>,
-    opens: Vec<ModuleOpens>,
-    uses: Vec<constantpool::Index>,
-    provides: Vec<ModuleProvides>,
+    requires: Array<ModuleRequires>,
+    exports: Array<ModuleExports>,
+    opens: Array<ModuleOpens>,
+    uses: Array<constantpool::Index>,
+    provides: Array<ModuleProvides>,
 }
 
 impl Module {
@@ -41,33 +41,39 @@ impl Module {
     }
 
     pub fn requires(&self) -> &[ModuleRequires] {
-        &self.requires
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.requires.as_slice() }
     }
 
     pub fn exports(&self) -> &[ModuleExports] {
-        &self.exports
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.exports.as_slice() }
     }
 
     pub fn opens(&self) -> &[ModuleOpens] {
-        &self.opens
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.opens.as_slice() }
     }
 
     pub fn uses(&self) -> &[constantpool::Index] {
-        &self.uses
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.uses.as_slice() }
     }
 
     pub fn provides(&self) -> &[ModuleProvides] {
-        &self.provides
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.provides.as_slice() }
     }
 }
 
 pub struct ModulePackages {
-    package_index: Vec<constantpool::Index>,
+    package_index: Array<constantpool::Index>,
 }
 
 impl ModulePackages {
     pub fn package_index(&self) -> &[constantpool::Index] {
-        &self.package_index
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.package_index.as_slice() }
     }
 }
 
@@ -114,8 +120,8 @@ macro_rules! module_part {
 }
 
 module_part!(ModuleRequires, version_index, constantpool::Index);
-module_part!(ModuleExports, to_index, Vec<constantpool::Index>);
-module_part!(ModuleOpens, to_index, Vec<constantpool::Index>);
+module_part!(ModuleExports, to_index, Array<constantpool::Index>);
+module_part!(ModuleOpens, to_index, Array<constantpool::Index>);
 
 impl ModuleRequires {
     pub fn version_index(&self) -> constantpool::Index {
@@ -125,23 +131,25 @@ impl ModuleRequires {
 
 impl ModuleExports {
     pub fn to_index(&self) -> &[constantpool::Index] {
-        &self.to_index
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.to_index.as_slice() }
     }
 }
 
 impl ModuleOpens {
     pub fn to_index(&self) -> &[constantpool::Index] {
-        &self.to_index
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.to_index.as_slice() }
     }
 }
 
 pub struct ModuleProvides {
     index: constantpool::Index,
-    with_index: Vec<constantpool::Index>,
+    with_index: Array<constantpool::Index>,
 }
 
 mod _parse {
-    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
+    use crate::{buf_read_named_type_arr, buf_read_u16_arr};
     use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
 
@@ -155,14 +163,14 @@ mod _parse {
             let flags = unsafe { buf.unsafe_read_u16() };
             let version_index = unsafe { buf.unsafe_read_u16() };
 
-            buf_read_named_type_vec!(ModuleRequires, requires, buf,
+            buf_read_named_type_arr!(ModuleRequires, requires, buf,
                 "module - requires", "module - requires - idx {}");
-            buf_read_named_type_vec!(ModuleExports, exports, buf,
+            buf_read_named_type_arr!(ModuleExports, exports, buf,
                 "module - exports", "module - exports - idx {}");
-            buf_read_named_type_vec!(ModuleOpens, opens, buf,
+            buf_read_named_type_arr!(ModuleOpens, opens, buf,
                 "module - opens", "module - opens - idx {}");
-            buf_read_u16_vec!(uses, buf, "module - uses");
-            buf_read_named_type_vec!(ModuleProvides, provides, buf,
+            buf_read_u16_arr!(uses, buf, "module - uses");
+            buf_read_named_type_arr!(ModuleProvides, provides, buf,
                 "module - provides", "module - provides - idx {}");
 
             Ok(Module {
@@ -201,7 +209,7 @@ mod _parse {
                     // SAFETY: Guaranteed by check_bytes
                     let index = unsafe { buf.unsafe_read_u16() };
                     let flags = unsafe { buf.unsafe_read_u16() };
-                    buf_read_u16_vec!(to_index, buf, "module exports");
+                    buf_read_u16_arr!(to_index, buf, "module exports");
 
                     Ok($name { index, flags: AccessFlags::new(flags), to_index })
                 }
@@ -217,7 +225,7 @@ mod _parse {
 
             // SAFETY: Guaranteed by check_bytes
             let index = unsafe { buf.unsafe_read_u16() };
-            buf_read_u16_vec!(with_index, buf, "module provides");
+            buf_read_u16_arr!(with_index, buf, "module provides");
 
             Ok(ModuleProvides { index, with_index })
         }

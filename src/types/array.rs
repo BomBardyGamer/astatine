@@ -15,6 +15,7 @@
 
 use std::alloc::{alloc, dealloc, Layout};
 use std::ptr::NonNull;
+use std::slice;
 use crate::types::errors;
 
 /// A simple vector (array) with a fixed length, known at runtime.
@@ -111,6 +112,21 @@ impl<T> Array<T> {
         Ok(())
     }
 
+    // SAFETY: Caller must guarantee that Array has been fully initialized
+    // as slices are assumed to be initialized, or must guarantee not to perform
+    // get operations on the slice, else behaviour is undefined.
+    pub unsafe fn as_slice(&self) -> &[T] {
+        unsafe { slice::from_raw_parts(self.ptr(), self.len) }
+    }
+
+    // SAFETY: Caller must guarantee that Array has been fully initialized
+    // as slices are assumed to be initialized, or must guarantee not to perform
+    // get operations on the slice, else behaviour is undefined.
+    pub unsafe fn as_slice_mut(&mut self) -> &mut [T] {
+        unsafe { slice::from_raw_parts_mut(self.ptr(), self.len) }
+    }
+
+    #[inline]
     fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
     }

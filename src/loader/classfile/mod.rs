@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::types::AccessFlags;
+use crate::types::{AccessFlags, Array};
 
 mod constantpool;
 mod attribute;
@@ -28,8 +28,8 @@ pub struct ClassFile {
     access_flags: AccessFlags,
     this_class: constantpool::Index,
     super_class: constantpool::Index,
-    interfaces: Vec<constantpool::Index>,
-    fields: Vec<field::Field>,
-    methods: Vec<method::Method>,
-    attributes: Vec<attribute::ClassFileAttribute>
+    interfaces: Array<constantpool::Index>,
+    fields: Array<field::Field>,
+    methods: Array<method::Method>,
+    attributes: Array<attribute::ClassFileAttribute>
 }

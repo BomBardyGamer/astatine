@@ -15,13 +15,14 @@
 
 use crate::loader::classfile::attribute::CodeAttribute;
 use crate::loader::classfile::attribute::stackmap;
+use crate::types::Array;
 
 pub struct Code {
     max_stack: u16,
     max_locals: u16,
-    code: Vec<u8>,
-    exceptions: Vec<Exception>,
-    attributes: Vec<CodeAttribute>,
+    code: Array<u8>,
+    exceptions: Array<Exception>,
+    attributes: Array<CodeAttribute>,
 }
 
 impl Code {
@@ -34,15 +35,13 @@ impl Code {
     }
 
     pub fn code(&self) -> &[u8] {
-        &self.code
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.code.as_slice() }
     }
 
     pub fn exceptions(&self) -> &[Exception] {
-        &self.exceptions
-    }
-
-    pub fn attributes(&self) -> &[CodeAttribute] {
-        &self.attributes
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.exceptions.as_slice() }
     }
 }
 
@@ -72,12 +71,13 @@ impl Exception {
 }
 
 pub struct StackMapTable {
-    entries: Vec<stackmap::Frame>,
+    entries: Array<stackmap::Frame>,
 }
 
 impl StackMapTable {
     pub fn entries(&self) -> &[stackmap::Frame] {
-        &self.entries
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.entries.as_slice() }
     }
 }
 
@@ -90,7 +90,7 @@ mod _attr_name {
 }
 
 mod _parse {
-    use crate::{buf_read_named_type_vec, buf_read_u8_vec_lensize};
+    use crate::{buf_read_named_type_arr, buf_read_u8_arr_lensize};
     use super::*;
     use super::stackmap::Frame;
     use crate::loader::{Parse, ParseError, BinaryReader};
@@ -104,8 +104,8 @@ mod _parse {
             let max_stack = unsafe { buf.unsafe_read_u16() };
             let max_locals = unsafe { buf.unsafe_read_u16() };
 
-            buf_read_u8_vec_lensize!(code, buf, unsafe_read_u32, "code - code array");
-            buf_read_named_type_vec!(Exception, exceptions, buf,
+            buf_read_u8_arr_lensize!(code, buf, unsafe_read_u32, "code - code array");
+            buf_read_named_type_arr!(Exception, exceptions, buf,
                 "code - exceptions", "code - exceptions - idx {}");
 
             Ok(Code {
@@ -113,7 +113,7 @@ mod _parse {
                 max_locals,
                 code,
                 exceptions,
-                attributes: vec![] // TODO: Attributes
+                attributes: Array::empty() // TODO: Attributes
             })
         }
     }
@@ -134,7 +134,7 @@ mod _parse {
 
     impl Parse<StackMapTable> for StackMapTable {
         fn parse(buf: &mut BinaryReader) -> Result<StackMapTable, ParseError> {
-            buf_read_named_type_vec!(Frame, entries, buf,
+            buf_read_named_type_arr!(Frame, entries, buf,
                 "code - stack map table", "code - stack map table - idx {}");
             Ok(StackMapTable { entries })
         }

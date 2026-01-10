@@ -14,25 +14,27 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
-use crate::types::AccessFlags;
+use crate::types::{AccessFlags, Array};
 
 pub struct Exceptions {
-    exception_indexes: Vec<constantpool::Index>,
+    exception_indexes: Array<constantpool::Index>,
 }
 
 impl Exceptions {
     pub fn indexes(&self) -> &[constantpool::Index] {
-        &self.exception_indexes
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.exception_indexes.as_slice() }
     }
 }
 
 pub struct MethodParameters {
-    parameters: Vec<MethodParameter>,
+    parameters: Array<MethodParameter>,
 }
 
 impl MethodParameters {
     pub fn parameters(&self) -> &[MethodParameter] {
-        &self.parameters
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.parameters.as_slice() }
     }
 }
 
@@ -70,21 +72,21 @@ mod _attr_name {
 }
 
 mod _parse {
-    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
+    use crate::{buf_read_named_type_arr, buf_read_u16_arr};
     use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
     use super::super::annotations;
 
     impl Parse<Exceptions> for Exceptions {
         fn parse(buf: &mut BinaryReader) -> Result<Exceptions, ParseError> {
-            buf_read_u16_vec!(exception_indexes, buf, "exceptions");
+            buf_read_u16_arr!(exception_indexes, buf, "exceptions");
             Ok(Exceptions { exception_indexes })
         }
     }
 
     impl Parse<MethodParameters> for MethodParameters {
         fn parse(buf: &mut BinaryReader) -> Result<MethodParameters, ParseError> {
-            buf_read_named_type_vec!(MethodParameter, parameters, buf,
+            buf_read_named_type_arr!(MethodParameter, parameters, buf,
                 "method parameters", "method parameters - idx {}");
             Ok(MethodParameters { parameters })
         }

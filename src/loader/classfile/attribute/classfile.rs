@@ -18,7 +18,7 @@ use crate::loader::classfile::constantpool;
 pub use _attr_name::*;
 pub use _parse::*;
 
-use crate::types::AccessFlags;
+use crate::types::{AccessFlags, Array};
 
 pub struct SourceFile {
     source_file_index: constantpool::Index,
@@ -31,12 +31,13 @@ impl SourceFile {
 }
 
 pub struct InnerClasses {
-    inner_classes: Vec<InnerClass>,
+    inner_classes: Array<InnerClass>,
 }
 
 impl InnerClasses {
     pub fn classes(&self) -> &[InnerClass] {
-        &self.inner_classes
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.inner_classes.as_slice() }
     }
 }
 
@@ -81,18 +82,19 @@ impl EnclosingMethod {
 }
 
 pub struct BootstrapMethods {
-    methods: Vec<BootstrapMethod>,
+    methods: Array<BootstrapMethod>,
 }
 
 impl BootstrapMethods {
     pub fn methods(&self) -> &[BootstrapMethod] {
-        &self.methods
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.methods.as_slice() }
     }
 }
 
 pub struct BootstrapMethod {
     method_ref: constantpool::Index,
-    bootstrap_arguments: Vec<constantpool::Index>,
+    bootstrap_arguments: Array<constantpool::Index>,
 }
 
 impl BootstrapMethod {
@@ -101,7 +103,8 @@ impl BootstrapMethod {
     }
 
     pub fn bootstrap_arguments(&self) -> &[constantpool::Index] {
-        &self.bootstrap_arguments
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.bootstrap_arguments.as_slice() }
     }
 }
 
@@ -116,22 +119,24 @@ impl NestHost {
 }
 
 pub struct NestMembers {
-    classes: Vec<constantpool::Index>,
+    classes: Array<constantpool::Index>,
 }
 
 impl NestMembers {
     pub fn classes(&self) -> &[constantpool::Index] {
-        &self.classes
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.classes.as_slice() }
     }
 }
 
 pub struct PermittedSubclasses {
-    classes: Vec<constantpool::Index>,
+    classes: Array<constantpool::Index>,
 }
 
 impl PermittedSubclasses {
     pub fn classes(&self) -> &[constantpool::Index] {
-        &self.classes
+        // SAFETY: We know this array is fully initialized
+        unsafe { self.classes.as_slice() }
     }
 }
 
@@ -149,7 +154,7 @@ mod _attr_name {
 }
 
 mod _parse {
-    use crate::{buf_read_named_type_vec, buf_read_u16_vec};
+    use crate::{buf_read_named_type_arr, buf_read_u16_arr};
     use super::*;
     use crate::loader::{Parse, ParseError, BinaryReader};
     use crate::types::AccessFlags;
@@ -166,7 +171,7 @@ mod _parse {
 
     impl Parse<InnerClasses> for InnerClasses {
         fn parse(buf: &mut BinaryReader) -> Result<InnerClasses, ParseError> {
-            buf_read_named_type_vec!(InnerClass, inner_classes, buf,
+            buf_read_named_type_arr!(InnerClass, inner_classes, buf,
                 "inner classes", "inner classes - idx {}");
             Ok(InnerClasses { inner_classes })
         }
@@ -200,7 +205,7 @@ mod _parse {
 
     impl Parse<BootstrapMethods> for BootstrapMethods {
         fn parse(buf: &mut BinaryReader) -> Result<BootstrapMethods, ParseError> {
-            buf_read_named_type_vec!(BootstrapMethod, methods, buf,
+            buf_read_named_type_arr!(BootstrapMethod, methods, buf,
                 "bootstrap methods", "bootstrap methods - idx {}");
             Ok(BootstrapMethods { methods })
         }
@@ -212,7 +217,7 @@ mod _parse {
 
             // SAFETY: Guaranteed by check_bytes
             let method_ref = unsafe { buf.unsafe_read_u16() };
-            buf_read_u16_vec!(bootstrap_arguments, buf, "bootstrap arguments");
+            buf_read_u16_arr!(bootstrap_arguments, buf, "bootstrap arguments");
 
             Ok(BootstrapMethod { method_ref, bootstrap_arguments })
         }
@@ -230,14 +235,14 @@ mod _parse {
 
     impl Parse<NestMembers> for NestMembers {
         fn parse(buf: &mut BinaryReader) -> Result<NestMembers, ParseError> {
-            buf_read_u16_vec!(classes, buf, "nest members");
+            buf_read_u16_arr!(classes, buf, "nest members");
             Ok(NestMembers { classes })
         }
     }
 
     impl Parse<PermittedSubclasses> for PermittedSubclasses {
         fn parse(buf: &mut BinaryReader) -> Result<PermittedSubclasses, ParseError> {
-            buf_read_u16_vec!(classes, buf, "permitted subclasses");
+            buf_read_u16_arr!(classes, buf, "permitted subclasses");
             Ok(PermittedSubclasses { classes })
         }
     }

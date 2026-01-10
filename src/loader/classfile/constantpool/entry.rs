@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
-use crate::types::{methodhandle, Jdouble, Jfloat, Jint, Jlong};
+use crate::types::{methodhandle, Array, Jdouble, Jfloat, Jint, Jlong};
 
 macro_rules! tag {
     ($name: ident, $tag: ident) => {
@@ -68,7 +68,6 @@ ref_entry!(FieldrefInfo, Fieldref);
 ref_entry!(MethodrefInfo, Methodref);
 ref_entry!(InterfaceMethodrefInfo, InterfaceMethodref);
 
-#[derive(Copy, Clone)]
 pub struct UnresolvedStringInfo {
     pub(super) string_index: super::Index,
 }
@@ -80,7 +79,6 @@ impl UnresolvedStringInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct IntegerInfo {
     value: i32,
 }
@@ -102,7 +100,6 @@ impl Into<Jint> for IntegerInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct FloatInfo {
     value: f32,
 }
@@ -123,7 +120,6 @@ impl Into<Jfloat> for FloatInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct LongInfo {
     value: i64,
 }
@@ -145,7 +141,6 @@ impl Into<Jlong> for LongInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct DoubleInfo {
     value: f64,
 }
@@ -167,7 +162,6 @@ impl Into<Jdouble> for DoubleInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct NameAndTypeInfo {
     pub(super) name_index: super::Index,
     pub(super) descriptor_index: super::Index,
@@ -185,13 +179,11 @@ impl NameAndTypeInfo {
 }
 
 // TODO: Figure out about how to do string stuff with this
-#[derive(Clone)]
 pub struct Utf8Info {
-    pub(super) bytes: Vec<u8>
+    pub(super) bytes: Array<u8>
 }
 tag!(Utf8Info, Utf8);
 
-#[derive(Copy, Clone)]
 pub struct MethodHandleInfo {
     pub(super) reference_kind: methodhandle::Ref,
     pub(super) reference_index: super::Index
@@ -208,7 +200,6 @@ impl MethodHandleInfo {
     }
 }
 
-#[derive(Copy, Clone)]
 pub struct MethodTypeInfo {
     pub(super) descriptor_index: super::Index,
 }
@@ -222,7 +213,6 @@ impl MethodTypeInfo {
 
 macro_rules! dynamic {
     ($name: ident, $tag: ident) => {
-        #[derive(Copy, Clone)]
         pub struct $name {
             pub(super) bootstrap_method_attr_index: super::Index,
             pub(super) name_and_type_index: super::Index,

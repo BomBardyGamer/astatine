@@ -106,12 +106,12 @@ impl Pool {
     }
 
     fn put_raw(&mut self, idx: usize, tag: u8, entry: Entry) {
-        self.tags.set(idx, tag).expect("big problems");
-        self.constants.set(idx, entry).expect("big problems");
+        self.tags.set(idx, tag).expect("array set was somehow out of bounds");
+        self.constants.set(idx, entry).expect("array set was somehow out of bounds");
     }
 
     fn put_invalid_raw(&mut self, idx: usize) {
-        self.tags.set(idx, Tag::INVALID).expect("big problems");
+        self.tags.set(idx, Tag::INVALID).expect("array set was somehow out of bounds");
     }
 
     #[inline]

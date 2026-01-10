@@ -14,6 +14,7 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
+use crate::types::Array;
 
 pub enum Frame {
     Same { frame_type: u8 },
@@ -33,12 +34,12 @@ pub enum Frame {
     Append {
         frame_type: u8,
         offset_delta: u16,
-        locals: Vec<VerificationType>,
+        locals: Array<VerificationType>,
     },
     Full {
         offset_delta: u16,
-        locals: Vec<VerificationType>,
-        stack: Vec<VerificationType>,
+        locals: Array<VerificationType>,
+        stack: Array<VerificationType>,
     }
 }
 
@@ -83,7 +84,7 @@ impl VerificationType {
 }
 
 mod _parse {
-    use crate::buf_read_named_type_vec;
+    use crate::buf_read_named_type_arr;
     use super::*;
     use crate::loader::{BinaryReader, Parse, ParseError};
 
@@ -152,13 +153,16 @@ mod _parse {
         let offset_delta = unsafe { buf.unsafe_read_u16() };
 
         // Cannot use macro as num_locals is not using a length defined in type
-        let num_locals = frame_type - 251;
-        let mut locals = Vec::with_capacity(num_locals as usize);
+        let num_locals = (frame_type - 251) as usize;
+        // TODO: We shouldn't wrap this. When we have proper error handling,
+        //  propagate it.
+        let mut locals = Array::new(num_locals)
+            .map_err(|_| ParseError::new("cannot allocate array"))?;
 
         for i in 0..num_locals {
             let local = VerificationType::parse(buf)
                 .map_err(ParseError::wrap(format!("append - locals - idx {i}")))?;
-            locals.push(local);
+            locals.set(i, local).expect("array set was out of bounds");
         }
         Ok(Frame::Append { frame_type, offset_delta, locals })
     }
@@ -169,9 +173,9 @@ mod _parse {
         // SAFETY: Guaranteed by check_bytes
         let offset_delta = unsafe { buf.unsafe_read_u16() };
 
-        buf_read_named_type_vec!(VerificationType, locals, buf,
+        buf_read_named_type_arr!(VerificationType, locals, buf,
             "full - locals", "full - locals - idx {}");
-        buf_read_named_type_vec!(VerificationType, stack, buf,
+        buf_read_named_type_arr!(VerificationType, stack, buf,
             "full - stack", "full - stack - idx {}");
 
         Ok(Frame::Full { offset_delta, locals, stack })

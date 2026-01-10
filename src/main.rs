@@ -13,6 +13,8 @@
 // You should have received a copy of the GNU General Public License along
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
+#![allow(unused)]
+
 #[macro_use]
 extern crate enum_primitive_derive;
 extern crate num_traits;

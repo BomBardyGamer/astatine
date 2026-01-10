@@ -15,15 +15,16 @@
 
 use crate::loader::classfile::attribute::RecordAttribute;
 use crate::loader::classfile::constantpool;
+use crate::types::Array;
 
 pub struct Record {
-    components: Vec<Component>,
+    components: Array<Component>,
 }
 
 pub struct Component {
     name_index: constantpool::Index,
     descriptor_index: constantpool::Index,
-    attributes: Vec<RecordAttribute>,
+    attributes: Array<RecordAttribute>,
 }
 
 mod _attr_name {
@@ -34,13 +35,13 @@ mod _attr_name {
 }
 
 mod _parse {
-    use crate::buf_read_named_type_vec;
+    use crate::buf_read_named_type_arr;
     use crate::loader::{BinaryReader, Parse, ParseError};
     use super::*;
 
     impl Parse<Record> for Record {
         fn parse(buf: &mut BinaryReader) -> Result<Record, ParseError> {
-            buf_read_named_type_vec!(Component, components, buf,
+            buf_read_named_type_arr!(Component, components, buf,
                 "record - components", "record - components - idx {}");
             Ok(Record { components })
         }
@@ -57,7 +58,7 @@ mod _parse {
             Ok(Component {
                 name_index,
                 descriptor_index,
-                attributes: vec![], // TODO: Attributes
+                attributes: Array::empty(), // TODO: Attributes
             })
         }
     }

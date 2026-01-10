@@ -14,21 +14,22 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 use crate::loader::classfile::constantpool;
+use crate::types::Array;
 
 pub struct RuntimeVisible {
-    annotations: Vec<Annotation>,
+    annotations: Array<Annotation>,
 }
 
 pub struct RuntimeInvisible {
-    annotations: Vec<Annotation>,
+    annotations: Array<Annotation>,
 }
 
 pub struct ParameterRuntimeVisible {
-    annotations: Vec<Vec<Annotation>>, // Annotations by parameter
+    annotations: Array<Array<Annotation>>, // Annotations by parameter
 }
 
 pub struct ParameterRuntimeInvisible {
-    annotations: Vec<Vec<Annotation>>, // Annotations by parameter
+    annotations: Array<Array<Annotation>>, // Annotations by parameter
 }
 
 mod _attr_name {
@@ -43,7 +44,7 @@ mod _attr_name {
 
 pub struct Annotation {
     type_index: constantpool::Index,
-    elements: Vec<Element>,
+    elements: Array<Element>,
 }
 
 pub struct Element {
@@ -105,7 +106,7 @@ pub struct AnnotationValue {
 }
 
 pub struct ArrayValue {
-    values: Vec<ElementValue>,
+    values: Array<ElementValue>,
 }
 
 pub struct Tag;
@@ -125,48 +126,18 @@ impl Tag {
     pub const ANNOTATION: u8 = '@' as u8;
     pub const ARRAY: u8 = '[' as u8;
 }
-// const TAG_BYTE: u8 = 'B' as u8;
-// const TAG_CHAR: u8 = 'C' as u8;
-// const TAG_DOUBLE: u8 = 'D' as u8;
-// const TAG_FLOAT: u8 = 'F' as u8;
-// const TAG_INT: u8 = 'I' as u8;
-// const TAG_LONG: u8 = 'J' as u8;
-// const TAG_SHORT: u8 = 'S' as u8;
-// const TAG_BOOLEAN: u8 = 'Z' as u8;
-// const TAG_STRING: u8 = 's' as u8;
-// const TAG_ENUM: u8 = 'e' as u8;
-// const TAG_CLASS: u8 = 'c' as u8;
-// const TAG_ANNOTATION: u8 = '@' as u8;
-// const TAG_ARRAY: u8 = '[' as u8;
-//
-// #[repr(u8)]
-// #[derive(Primitive, Debug, PartialEq, Copy, Clone)]
-// pub enum Tag {
-//     Byte = TAG_BYTE,
-//     Char = TAG_CHAR,
-//     Double = TAG_DOUBLE,
-//     Float = TAG_FLOAT,
-//     Int = TAG_INT,
-//     Long = TAG_LONG,
-//     Short = TAG_SHORT,
-//     Boolean = TAG_BOOLEAN,
-//     String = TAG_STRING,
-//     Enum = TAG_ENUM,
-//     Class = TAG_CLASS,
-//     Annotation = TAG_ANNOTATION,
-//     Array = TAG_ARRAY,
-// }
 
 mod _parse {
-    use crate::buf_read_named_type_vec;
+    use crate::buf_read_named_type_arr;
     use crate::loader::{BinaryReader, Parse, ParseError};
+    use crate::types::Array;
     use super::*;
 
     macro_rules! impl_annotation_attr {
         ($name: ident, $err_msg: expr, $err_msg_idx: expr) => {
             impl Parse<$name> for $name {
                 fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
-                    buf_read_named_type_vec!(Annotation, annotations, buf, $err_msg, $err_msg_idx);
+                    buf_read_named_type_arr!(Annotation, annotations, buf, $err_msg, $err_msg_idx);
                     Ok($name { annotations })
                 }
             }
@@ -183,18 +154,22 @@ mod _parse {
         ($name: ident, $err_msg: expr, $err_msg_idx: expr) => {
             impl Parse<$name> for $name {
                 fn parse(buf: &mut BinaryReader) -> Result<$name, ParseError> {
-                    // copy and paste of buf_read_named_type_vec for type Vec<Annotation>
+                    // copy and paste of buf_read_named_type_arr for type Array<Array<Annotation>>
                     // as that macro does not support this properly
                     buf.check_bytes(2, $err_msg)?;
 
-                    let mut annotations: Vec<Vec<Annotation>>;
+                    let mut annotations: Array<Array<Annotation>>;
                     {
                         // SAFETY: Guaranteed by check_bytes
-                        let len = unsafe { buf.unsafe_read_u16() };
-                        annotations = Vec::with_capacity(len as usize);
+                        let len = unsafe { buf.unsafe_read_u16() } as usize;
+                        // TODO: We shouldn't wrap this. When we have proper error handling,
+                        //  propagate it.
+                        annotations = Array::new(len)
+                            .map_err(|_| ParseError::new("cannot allocate array"))?;
 
                         for i in 0..len {
-                            annotations.push(parse_param_vec(buf).map_err(ParseError::wrap(format!($err_msg_idx, i)))?);
+                            let v = parse_param_arr(buf).map_err(ParseError::wrap(format!($err_msg_idx, i)))?;
+                            annotations.set(i, v).expect("array set was somehow out of bounds");
                         }
                     }
                     Ok($name { annotations })
@@ -209,8 +184,8 @@ mod _parse {
         "runtime invisible parameter annotations - parameters",
         "runtime invisible parameter annotations - parameter idx {}");
 
-    fn parse_param_vec(buf: &mut BinaryReader) -> Result<Vec<Annotation>, ParseError> {
-        buf_read_named_type_vec!(Annotation, result, buf, "annotations", "annotations - idx {}");
+    fn parse_param_arr(buf: &mut BinaryReader) -> Result<Array<Annotation>, ParseError> {
+        buf_read_named_type_arr!(Annotation, result, buf, "annotations", "annotations - idx {}");
         Ok(result)
     }
 
@@ -220,7 +195,7 @@ mod _parse {
 
             // SAFETY: Guaranteed by check_bytes
             let type_index = unsafe { buf.unsafe_read_u16() };
-            buf_read_named_type_vec!(Element, elements, buf, "element", "element - idx {}");
+            buf_read_named_type_arr!(Element, elements, buf, "element", "element - idx {}");
 
             Ok(Annotation { type_index, elements })
         }
@@ -295,7 +270,7 @@ mod _parse {
     }
 
     fn parse_array(buf: &mut BinaryReader) -> Result<ArrayValue, ParseError> {
-        buf_read_named_type_vec!(ElementValue, values, buf,
+        buf_read_named_type_arr!(ElementValue, values, buf,
             "value - array", "value - array - idx {}");
         Ok(ArrayValue { values })
     }

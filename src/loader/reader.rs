@@ -16,6 +16,7 @@
 use std::cmp::min;
 use std::ptr;
 use crate::loader::ParseError;
+use crate::types::Array;
 
 pub struct BinaryReader {
     buf: Vec<u8>,
@@ -32,7 +33,7 @@ impl BinaryReader {
         let read_len = min(self.buf.len() - self.off, out.len());
 
         // SAFETY: read_len ensures that we will only read the minimum of how many bytes are left
-        // in the buffer and the size of the output. Both vectors and slices are properly aligned.
+        // in the buffer and the size of the output. Slices are properly aligned.
         unsafe {
             ptr::copy(self.buf.as_ptr().offset(self.off as isize), out.as_mut_ptr(), read_len);
         }
@@ -158,24 +159,30 @@ impl BinaryReader {
 /// Allows arbitrary reader function for len to allow different u-sized lengths
 /// This is useful in code array as the size of the code array is a u32 but the array is Vec<u8>
 #[macro_export]
-macro_rules! buf_read_u8_vec_lensize {
+macro_rules! buf_read_u8_arr_lensize {
     ($var_name: ident, $buf: expr, $read_len: ident, $error: expr) => {
         $buf.check_bytes(2, $error)?;
 
-        let mut $var_name: Vec<u8>;
+        let mut $var_name: Array<u8>;
         {
             // SAFETY: Guaranteed by check_bytes at top
             let len = unsafe { $buf.$read_len() };
             $buf.check_bytes(len as usize, $error)?;
 
-            $var_name = Vec::with_capacity(len as usize);
-            $buf.read(&mut $var_name);
+            // TODO: We shouldn't wrap this. When we have proper error handling,
+            //  propagate it.
+            $var_name = Array::new(len as usize)
+                .map_err(|_| ParseError::new("cannot allocate array"))?;
+            // SAFETY: We know the method we pass it to does not perform get operations,
+            // therefore no chance of dereferencing a pointer to uninitialized memory
+            let slice = unsafe { $var_name.as_slice_mut() };
+            $buf.read(slice);
         }
     };
 }
 
 #[macro_export]
-macro_rules! buf_read_u16_vec {
+macro_rules! buf_read_u16_arr {
     ($var_name: ident, $buf: expr, $error: expr) => {
         $buf.check_bytes(2, $error)?;
 
@@ -185,26 +192,37 @@ macro_rules! buf_read_u16_vec {
             let len = unsafe { $buf.unsafe_read_u16() } as usize;
             $buf.check_bytes(len * 2, $error)?;
 
-            $var_name = Vec::with_capacity(len as usize);
+            // TODO: We shouldn't wrap this. When we have proper error handling,
+            //  propagate it.
+            $var_name = Array::new(len as usize)
+                .map_err(|_| ParseError::new("cannot allocate array"))?;
+            // SAFETY: We know the method we pass it to does not perform get operations,
+            // therefore no chance of dereferencing a pointer to uninitialized memory
+            let slice = unsafe { $var_name.as_slice_mut() };
             // SAFETY: Guaranteed by check_bytes on len
-            unsafe { $buf.unsafe_read_u16_slice(&mut $var_name) };
+            unsafe { $buf.unsafe_read_u16_slice(slice) };
         }
     };
 }
 
 #[macro_export]
-macro_rules! buf_read_named_type_vec {
+macro_rules! buf_read_named_type_arr {
     ($typ: ident, $var_name: ident, $buf: expr, $error: expr, $error_idx: expr) => {
         $buf.check_bytes(2, $error)?;
 
-        let mut $var_name: Vec<$typ>;
+        let mut $var_name: Array<$typ>;
         {
             // SAFETY: Guaranteed by check_bytes at top
-            let len = unsafe { $buf.unsafe_read_u16() };
-            $var_name = Vec::with_capacity(len as usize);
+            let len = unsafe { $buf.unsafe_read_u16() } as usize;
+
+            // TODO: We shouldn't wrap this. When we have proper error handling,
+            //  propagate it.
+            $var_name = Array::new(len)
+                .map_err(|_| ParseError::new("cannot allocate array"))?;
 
             for i in 0..len {
-                $var_name.push($typ::parse($buf).map_err(ParseError::wrap(format!($error_idx, i)))?);
+                let v = $typ::parse($buf).map_err(ParseError::wrap(format!($error_idx, i)))?;
+                $var_name.set(i, v).expect("array set was somehow out of bounds");
             }
         }
     };

@@ -15,14 +15,14 @@
 
 use crate::loader::{Parse, ParseError};
 use crate::loader::reader::BinaryReader;
-use crate::types::AccessFlags;
+use crate::types::{AccessFlags, Array};
 use super::{attribute, constantpool};
 
 pub struct Method {
     access_flags: AccessFlags,
     name_index: constantpool::Index,
     descriptor_index: constantpool::Index,
-    attributes: Vec<attribute::MethodAttribute>,
+    attributes: Array<attribute::MethodAttribute>,
 }
 
 impl Parse<Method> for Method {
@@ -39,7 +39,7 @@ impl Parse<Method> for Method {
             access_flags: AccessFlags::new(flags),
             name_index,
             descriptor_index,
-            attributes: vec![] // TODO: Attributes
+            attributes: Array::empty() // TODO: Attributes
         })
     }
 }

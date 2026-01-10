@@ -25,8 +25,10 @@ impl Parse<Pool> for Pool {
 
         // SAFETY: Guaranteed by check_bytes
         let len = unsafe { buf.unsafe_read_u16() };
+        // TODO: We shouldn't wrap this. When we have proper error handling,
+        //  propagate it.
         let mut pool = Pool::new(len as usize)
-            .map_err(|_| ParseError::new("out of memory"))?; // TODO: Proper error handling
+            .map_err(|_| ParseError::new("out of memory"))?;
 
         // Constant pool index starts from 1
         let mut idx = 1;
@@ -89,8 +91,15 @@ impl Parse<Utf8Info> for Utf8Info {
         let len = unsafe { buf.unsafe_read_u16() } as usize;
         buf.check_bytes(len, "utf8")?;
 
-        let mut bytes = Vec::with_capacity(len);
-        buf.read(&mut bytes);
+        // TODO: We shouldn't wrap this. When we have proper error handling,
+        //  propagate it.
+        let mut bytes = Array::new(len)
+            .map_err(|_| ParseError::new("cannot allocate array"))?;
+
+        // SAFETY: read only writes to the slice, doesn't read from it, so
+        // it being full of uninitialized memory is not a problem
+        let slice = unsafe { bytes.as_slice_mut() };
+        buf.read(slice);
 
         Ok(Utf8Info { bytes })
     }
