@@ -3,7 +3,32 @@ use crate::class::constantpool::Pool;
 use crate::class::parse::ParseError;
 use crate::class::parse::reader::BinaryReader;
 use crate::{buf_read_named_type_arr, buf_read_u16_arr, types};
+use crate::class::field::Field;
+use crate::class::method::Method;
 use crate::types::{AccessFlags, Array, ClassFileVersion};
+use crate::class::{field::parse_field, method::parse_method};
+
+macro_rules! parse_field_method {
+    ($typ: ident, $func: ident, $var_name: ident, $cp: expr, $buf: expr, $error: expr, $error_idx: expr) => {
+        $buf.check_bytes(2, $error)?;
+
+        let mut $var_name: Array<$typ>;
+        {
+            // SAFETY: Guaranteed by check_bytes at top
+            let len = unsafe { $buf.unsafe_read_u16() } as usize;
+
+            // TODO: We shouldn't wrap this. When we have proper error handling,
+            //  propagate it.
+            $var_name = Array::new(len)
+                .map_err(|_| ParseError::new("cannot allocate array"))?;
+
+            for i in 0..len {
+                let v = $func($cp, $buf).map_err(ParseError::wrap(format!($error_idx, i)))?;
+                $var_name.set(i, v).expect("array set was somehow out of bounds");
+            }
+        }
+    };
+}
 
 pub fn parse_class(buf: &mut BinaryReader) -> Result<Class, ParseError> {
     read_and_check_magic(buf)?;
@@ -37,9 +62,10 @@ pub fn parse_class(buf: &mut BinaryReader) -> Result<Class, ParseError> {
 
     buf_read_u16_arr!(interfaces, buf, "interfaces");
 
-    // TODO: Field and method loading
-    // buf_read_named_type_arr!(Field, fields, buf, "fields", "fields - idx {}");
-    // buf_read_named_type_arr!(Method, methods, buf, "methods", "methods - idx {}");
+    parse_field_method!(Field, parse_field, fields, &constant_pool, buf,
+        "fields", "fields - idx {}");
+    parse_field_method!(Method, parse_method, methods, &constant_pool, buf,
+        "methods", "methods - idx {}");
 
     let info = ClassInfo {
         minor_version,
@@ -53,8 +79,8 @@ pub fn parse_class(buf: &mut BinaryReader) -> Result<Class, ParseError> {
     Ok(Class {
         info,
         constant_pool,
-        fields: Array::empty(),
-        methods: Array::empty(),
+        fields,
+        methods,
     })
 }
 

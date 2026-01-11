@@ -16,7 +16,7 @@
 mod entry;
 mod parser;
 
-use std::cell::{Cell, UnsafeCell};
+use std::cell::UnsafeCell;
 // Export everything in submodules in this module so it appears as all one module
 pub use entry::{
     UnresolvedClassInfo, DoubleInfo, DynamicInfo, FieldrefInfo, FloatInfo,
@@ -27,6 +27,16 @@ use crate::class::constantpool::entry::{ClassInfo, NameAndTypeInfo, StringInfo, 
 use crate::types::{Array, OutOfMemoryError};
 
 pub struct Pool {
+    // These two being UnsafeCell basically means borrow checking is entirely on us.
+    // We know this type is thread safe though, as it is considered immutable once initialized,
+    // save for some operations like the resolve functions, which perform a set.
+    // It also means we don't need to have a mutable class reference everywhere just to perform
+    // on-the-fly resolution, which makes programming a little easier.
+
+    // In future the resolves will need to be locked, but we aren't quite that advanced yet.
+    // The initial population is always single threaded, and happens before any of the values
+    // can be used, so we safeguard at that point by making `put` and `put_two_wide`
+    // take &mut self.
     tags: UnsafeCell<Array<u8>>,
     constants: UnsafeCell<Array<Entry>>,
 }

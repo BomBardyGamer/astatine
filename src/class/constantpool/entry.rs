@@ -256,7 +256,7 @@ impl NameAndTypeInfo {
     }
 }
 
-// TODO: Figure out about how to do string stuff with this
+// TODO: Figure out how best to do string stuff with this
 pub struct UnresolvedUtf8Info {
     pub(super) bytes: Array<u8>
 }

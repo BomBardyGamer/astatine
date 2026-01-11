@@ -1,5 +1,6 @@
 use crate::{buf_read_named_type_arr, buf_read_u8_arr_lensize};
 use crate::class::Class;
+use crate::class::constantpool::Pool;
 use crate::class::parse::{BinaryReader, ParseError};
 use crate::loader::Parse;
 use crate::types::{AccessFlags, Array};
@@ -25,7 +26,7 @@ pub struct ExceptionHandler {
     catch_type: u16,
 }
 
-pub fn parse_method(class: &mut Class, buf: &mut BinaryReader) -> Result<Method, ParseError> {
+pub(super) fn parse_method(pool: &Pool, buf: &mut BinaryReader) -> Result<Method, ParseError> {
     // 2 access flags, 2 name index, 2 descriptor index
     buf.check_bytes(2 + 2 + 2, "access flags, name index, descriptor index")?;
 
@@ -34,10 +35,9 @@ pub fn parse_method(class: &mut Class, buf: &mut BinaryReader) -> Result<Method,
     let name_index = unsafe { buf.unsafe_read_u16() };
     let descriptor_index = unsafe { buf.unsafe_read_u16() };
 
-    let name = class.constant_pool.resolve_utf8(name_index)
-        .expect("bad things").as_string();
-    let descriptor = class.constant_pool.resolve_utf8(descriptor_index)
-        .expect("bad things").as_string();
+    // TODO: Handle these errors properly
+    let name = pool.resolve_utf8(name_index).expect("bad things").as_string();
+    let descriptor = pool.resolve_utf8(descriptor_index).expect("bad things").as_string();
 
     let code = Code::parse(buf)?;
 
