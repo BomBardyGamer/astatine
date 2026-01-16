@@ -1,5 +1,4 @@
 mod reader;
-mod class;
 
 pub use reader::BinaryReader;
 

@@ -9,8 +9,8 @@ pub struct BinaryReader {
 }
 
 impl BinaryReader {
-    pub fn new(buf: Vec<u8>) -> BinaryReader {
-        BinaryReader { buf, off: 0 }
+    pub fn new(buf: Vec<u8>) -> Self {
+        Self { buf, off: 0 }
     }
 
     // Doesn't error with EOF as this function just reads as many bytes as it can from the buffer
@@ -38,9 +38,8 @@ impl BinaryReader {
     pub unsafe fn unsafe_read_u8(&mut self) -> u8 {
         // SAFETY: Caller must guarantee that buffer has remaining bytes with has_bytes call
         // else behaviour is undefined
-        let r = unsafe { *self.buf.get_unchecked(self.off) };
         self.off += 1;
-        r
+        unsafe { *self.buf.get_unchecked(self.off) }
     }
 
     pub fn read_u16(&mut self) -> Result<u16, EndOfBufferError> {
@@ -79,8 +78,8 @@ impl BinaryReader {
         // SAFETY: Caller must guarantee that buffer has remaining bytes
         // else behaviour is undefined
         unsafe {
-            let vals = self.buf.get_unchecked(self.off..self.off+3);
-            (a, b, c, d) = (vals[0] as u32, vals[1] as u32, vals[2] as u32, vals[3] as u32);
+            let v = self.buf.get_unchecked(self.off..self.off+4);
+            (a, b, c, d) = (v[0] as u32, v[1] as u32, v[2] as u32, v[3] as u32);
         };
 
         self.off += 4;
@@ -134,10 +133,6 @@ impl BinaryReader {
             true => Ok(()),
             false => ParseError::not_enough_bytes(msg.into())
         }
-    }
-
-    pub const fn empty(&self) -> bool {
-        !self.has_bytes(1)
     }
 }
 

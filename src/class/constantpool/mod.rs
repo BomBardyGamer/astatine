@@ -14,15 +14,16 @@
 // with this program; if not, see <https://www.gnu.org/licenses/>.
 
 mod entry;
-mod parser;
 
-use std::cell::UnsafeCell;
 // Export everything in submodules in this module so it appears as all one module
 pub use entry::{
     UnresolvedClassInfo, DoubleInfo, DynamicInfo, FieldrefInfo, FloatInfo,
     IntegerInfo, InterfaceMethodrefInfo, InvokeDynamicInfo, LongInfo, MethodHandleInfo,
     MethodTypeInfo, MethodrefInfo, ModuleInfo, UnresolvedNameAndTypeInfo, PackageInfo, UnresolvedStringInfo, UnresolvedUtf8Info,
 };
+pub use _parse::parse_pool;
+
+use std::cell::UnsafeCell;
 use crate::class::constantpool::entry::{ClassInfo, NameAndTypeInfo, StringInfo, Utf8Info};
 use crate::types::{Array, OutOfMemoryError};
 
@@ -112,7 +113,7 @@ impl Pool {
         let unresolved = self.get_unresolved_utf8(idx)?;
         let resolved = unresolved.resolve();
 
-        let entry = self.internal_put(idx, Tag::RESOLVED_UTF8, Entry::ResolvedUtf8(resolved));
+        let entry = self.put_internal(idx, Tag::RESOLVED_UTF8, Entry::ResolvedUtf8(resolved));
         if let Entry::ResolvedUtf8(info) = entry {
             Some(info)
         } else {
@@ -128,7 +129,7 @@ impl Pool {
         let unresolved = self.get_unresolved_string(idx)?;
         let resolved = unresolved.resolve(self);
 
-        let entry = self.internal_put(idx, Tag::RESOLVED_STRING, Entry::ResolvedString(resolved));
+        let entry = self.put_internal(idx, Tag::RESOLVED_STRING, Entry::ResolvedString(resolved));
         if let Entry::ResolvedString(info) = entry {
             Some(info)
         } else {
@@ -144,7 +145,7 @@ impl Pool {
         let unresolved = self.get_unresolved_class(idx)?;
         let resolved = unresolved.resolve(self);
 
-        let entry = self.internal_put(idx, Tag::RESOLVED_CLASS, Entry::ResolvedClass(resolved));
+        let entry = self.put_internal(idx, Tag::RESOLVED_CLASS, Entry::ResolvedClass(resolved));
         if let Entry::ResolvedClass(info) = entry {
             Some(info)
         } else {
@@ -160,7 +161,7 @@ impl Pool {
         let unresolved = self.get_unresolved_name_and_type(idx)?;
         let resolved = unresolved.resolve(self);
 
-        let entry = self.internal_put(idx, Tag::RESOLVED_NAME_AND_TYPE, Entry::ResolvedNameAndType(resolved));
+        let entry = self.put_internal(idx, Tag::RESOLVED_NAME_AND_TYPE, Entry::ResolvedNameAndType(resolved));
         if let Entry::ResolvedNameAndType(info) = entry {
             Some(info)
         } else {
@@ -177,17 +178,7 @@ impl Pool {
         index >= 1 && index < self.size()
     }
 
-    pub(self) fn put(&mut self, idx: Index, tag: u8, entry: Entry) {
-        self.internal_put(idx, tag, entry);
-    }
-
-    pub(self) fn put_two_wide(&mut self, idx: Index, tag: u8, entry: Entry) {
-        let arr_idx = self.cp_idx_to_arr_idx(idx);
-        self.put_raw(arr_idx, tag, entry);
-        self.put_invalid_raw(arr_idx + 1);
-    }
-
-    fn internal_put(&self, idx: Index, tag: u8, entry: Entry) -> &Entry {
+    fn put_internal(&self, idx: Index, tag: u8, entry: Entry) -> &Entry {
         let arr_idx = self.cp_idx_to_arr_idx(idx);
         self.put_raw(arr_idx, tag, entry)
     }
@@ -236,6 +227,60 @@ impl Pool {
     const fn arr_idx_to_cp_idx(&self, arr_idx: usize) -> Index {
         // Internal array starts from 0 but CP starts from 1
         (arr_idx + 1) as Index
+    }
+}
+
+mod _parse {
+    use crate::class::parse::{BinaryReader, ParseError};
+    use super::*;
+
+    pub fn parse_pool(buf: &mut BinaryReader) -> Result<Pool, ParseError> {
+        buf.check_bytes(2, "constant pool")?;
+
+        // SAFETY: Guaranteed by check_bytes
+        let len = unsafe { buf.unsafe_read_u16() };
+        // TODO: We shouldn't wrap this. When we have proper error handling,
+        //  propagate it.
+        let mut pool = Pool::new(len as usize)
+            .map_err(|_| ParseError::new("out of memory"))?;
+
+        // Constant pool index starts from 1
+        let mut idx = 1;
+        while idx < len {
+            buf.check_bytes(1, format!("constant pool tag at {idx}"))?;
+
+            let tag = unsafe { buf.unsafe_read_u8() };
+            let r = entry::parse_entry(buf, tag);
+
+            let entry = r.map_err(|err| {
+                let msg = format!("bad constant pool entry {idx}: {err}");
+                return ParseError::new(msg);
+            })?;
+
+            if tag == Tag::LONG || tag == Tag::DOUBLE {
+                // Long and double take up 2 entries in constant pool
+                // Ref: https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.4.5
+                pool.put_two_wide(idx, tag, entry);
+                idx += 2;
+            } else {
+                pool.put(idx, tag, entry);
+                idx += 1;
+            }
+        }
+
+        Ok(pool)
+    }
+
+    impl Pool {
+        fn put(&mut self, idx: Index, tag: u8, entry: Entry) {
+            self.put_internal(idx, tag, entry);
+        }
+
+        fn put_two_wide(&mut self, idx: Index, tag: u8, entry: Entry) {
+            let arr_idx = self.cp_idx_to_arr_idx(idx);
+            self.put_raw(arr_idx, tag, entry);
+            self.put_invalid_raw(arr_idx + 1);
+        }
     }
 }
 

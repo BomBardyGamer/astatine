@@ -20,9 +20,9 @@ pub(super) fn parse_field(pool: &Pool, buf: &mut BinaryReader) -> Result<Field, 
     let descriptor_index = unsafe { buf.unsafe_read_u16() };
 
     let name = pool.resolve_utf8(name_index)
-        .expect("bad things").as_string();
+        .expect("cannot resolve name").as_string();
     let descriptor = pool.resolve_utf8(descriptor_index)
-        .expect("bad things").as_string();
+        .expect("cannot resolve descriptor").as_string();
 
     Ok(Field {
         name,

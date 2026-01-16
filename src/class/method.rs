@@ -2,7 +2,6 @@ use crate::{buf_read_named_type_arr, buf_read_u8_arr_lensize};
 use crate::class::Class;
 use crate::class::constantpool::Pool;
 use crate::class::parse::{BinaryReader, ParseError};
-use crate::loader::Parse;
 use crate::types::{AccessFlags, Array};
 
 pub struct Method {
@@ -36,9 +35,12 @@ pub(super) fn parse_method(pool: &Pool, buf: &mut BinaryReader) -> Result<Method
     let descriptor_index = unsafe { buf.unsafe_read_u16() };
 
     // TODO: Handle these errors properly
-    let name = pool.resolve_utf8(name_index).expect("bad things").as_string();
-    let descriptor = pool.resolve_utf8(descriptor_index).expect("bad things").as_string();
+    let name = pool.resolve_utf8(name_index)
+        .expect("cannot resolve name").as_string();
+    let descriptor = pool.resolve_utf8(descriptor_index)
+        .expect("cannot resolve descriptor").as_string();
 
+    // TODO: Read this as an attribute - this won't work
     let code = Code::parse(buf)?;
 
     Ok(Method {
