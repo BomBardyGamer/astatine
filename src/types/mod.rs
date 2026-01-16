@@ -19,6 +19,8 @@ mod versions;
 mod array;
 mod errors;
 mod access_flags;
+pub mod annotations;
+pub mod type_annotations;
 
 pub use primitives::{Jbyte, Jshort, Jint, Jlong, Jchar, Jfloat, Jdouble, Jboolean};
 pub use versions::{ClassFileVersion, CURRENT_VIRTUAL_MACHINE_VERSION};
